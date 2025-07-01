@@ -195,11 +195,8 @@ def train(model_path, data_dir, output_dir):
   train_and_val_dataset, test_dataset = shuffle_and_split(image_paths, labels)
   # Initializes interpreter and allocates tensors here to avoid repeatedly
   # initialization which is time consuming.
-  print('error here???')
   interpreter = make_interpreter(model_path, device=':0')
-  print('error here????')
   interpreter.allocate_tensors()
-  print('error here?????')
   print('Extract embeddings for data_train')
   t0 = time.perf_counter()
   train_and_val_dataset['data_train'] = extract_embeddings(
