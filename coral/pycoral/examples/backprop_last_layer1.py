@@ -108,7 +108,7 @@ def get_image_paths(data_dir):
         image_paths.append(os.path.join(root, img_name))
         labels.append(class_idx)
       class_idx += 1
-  print("error")
+  # print("error")
   return image_paths, labels, dict(zip(range(class_idx), classes))
 
 
@@ -142,6 +142,15 @@ def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1):
   num_val = int(num_total * val_percent)
   num_test = int(num_total * test_percent)
   num_train = num_total - num_val - num_test
+
+  # Printing for details of dataset size
+  print("-" * 50)
+  print(f"Dataset split summary:")
+  print(f"Total images: {num_total}")
+  print(f"Training set: {num_train} images ({num_train/num_total*100:.1f}%)")
+  print(f"Validation set: {num_val} images ({num_val/num_total*100:.1f}%)")
+  print(f"Test set: {num_test} images ({num_test/num_total*100:.1f}%)")
+  print("-" * 50)
 
   train_and_val_dataset = {}
   train_and_val_dataset['data_train'] = image_paths[0:num_train]
@@ -191,11 +200,11 @@ def train(model_path, data_dir, output_dir):
   train_and_val_dataset, test_dataset = shuffle_and_split(image_paths, labels)
   # Initializes interpreter and allocates tensors here to avoid repeatedly
   # initialization which is time consuming.
-  print('error here 1')
+  # print('error here 1')
   interpreter = make_interpreter(model_path, device=':0')
-  print('error here 2')
+  # print('error here 2')
   interpreter.allocate_tensors()
-  print('error here 3')
+  # print('error here 3')
   print('Extract embeddings for data_train')
   t0 = time.perf_counter()
   train_and_val_dataset['data_train'] = extract_embeddings(
