@@ -19,4 +19,4 @@ def count_tflite_parameters(tflite_model_path):
 
 # Example usage
 # TODO: replace cov2d_11_relu6.tflite with your own TFLite model
-count_tflite_parameters("./extractor1.tflite")
+count_tflite_parameters("./conv_pw_3_relu.tflite")
