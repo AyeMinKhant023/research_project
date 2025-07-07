@@ -220,11 +220,11 @@ def analyze_single_model(model_path, data_dir, output_dir):
     
     # Create shared result folder and save detailed results
     model_name = os.path.splitext(os.path.basename(model_path))[0]  # Remove .tflite extension
-    result_folder = os.path.join(output_dir, "result of all models")
+    result_folder = os.path.join(output_dir, "result_of_all_models")
     os.makedirs(result_folder, exist_ok=True)
 
     # Save detailed results to txt file
-    results_file = os.path.join(result_folder, f'result of {model_name}.txt')
+    results_file = os.path.join(result_folder, f'result_of_{model_name}.txt')
     with open(results_file, 'w') as f:
         f.write(f"="*80 + "\n")
         f.write(f"MODEL ANALYSIS AND TRAINING REPORT\n")
