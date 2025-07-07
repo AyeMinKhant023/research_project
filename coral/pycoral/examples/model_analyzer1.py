@@ -281,80 +281,20 @@ def analyze_single_model(model_path, data_dir, output_dir):
     }
 
 
-def create_plots(results_df, output_dir):
-    """Create plots for the analysis results."""
+def create_test_runtime_plot(results_df, output_dir):
+    """Create a plot specifically for parameters vs test runtime only."""
     
-    # Create figure with subplots
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
-    
-    # Plot 1: Parameters vs Total Runtime (Main plot requested by professor)
-    ax1.scatter(results_df['total_parameters'], results_df['total_runtime'], 
-               c='blue', alpha=0.7, s=100)
-    ax1.set_xlabel('Total Parameters')
-    ax1.set_ylabel('Total Runtime (seconds)')
-    ax1.set_title('Parameters vs Runtime')
-    ax1.grid(True, alpha=0.3)
-    
-    # Add model names as labels
-    for i, row in results_df.iterrows():
-        ax1.annotate(row['model_name'], 
-                    (row['total_parameters'], row['total_runtime']),
-                    xytext=(5, 5), textcoords='offset points',
-                    fontsize=8, alpha=0.7)
-    
-    # Plot 2: Parameters vs Training Runtime
-    ax2.scatter(results_df['total_parameters'], results_df['train_runtime'], 
-               c='red', alpha=0.7, s=100)
-    ax2.set_xlabel('Total Parameters')
-    ax2.set_ylabel('Training Runtime (seconds)')
-    ax2.set_title('Parameters vs Training Runtime')
-    ax2.grid(True, alpha=0.3)
-    
-    # Plot 3: Model Comparison - Runtime Breakdown
-    models = results_df['model_name']
-    x_pos = np.arange(len(models))
-    
-    ax3.bar(x_pos, results_df['train_runtime'], label='Training', alpha=0.7)
-    ax3.bar(x_pos, results_df['val_runtime'], bottom=results_df['train_runtime'], 
-            label='Validation', alpha=0.7)
-    ax3.bar(x_pos, results_df['test_runtime'], 
-            bottom=results_df['train_runtime'] + results_df['val_runtime'], 
-            label='Test', alpha=0.7)
-    
-    ax3.set_xlabel('Models')
-    ax3.set_ylabel('Runtime (seconds)')
-    ax3.set_title('Runtime Breakdown by Model')
-    ax3.set_xticks(x_pos)
-    ax3.set_xticklabels(models, rotation=45, ha='right')
-    ax3.legend()
-    ax3.grid(True, alpha=0.3)
-    
-    # Plot 4: Parameters Distribution
-    ax4.bar(models, results_df['total_parameters'], alpha=0.7, color='green')
-    ax4.set_xlabel('Models')
-    ax4.set_ylabel('Total Parameters')
-    ax4.set_title('Model Parameters Comparison')
-    ax4.set_xticklabels(models, rotation=45, ha='right')
-    ax4.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    
-    # Save the plot
-    plot_path = os.path.join(output_dir, 'model_analysis_plots.png')
-    plt.savefig(plot_path, dpi=300, bbox_inches='tight')
-    print(f"Plots saved to: {plot_path}")
-    
-    # Also create a focused plot just for parameters vs runtime (what professor specifically asked for)
+    # Create a focused plot just for parameters vs test runtime
     plt.figure(figsize=(10, 6))
-    plt.scatter(results_df['total_parameters'], results_df['total_runtime'], 
-               c='blue', alpha=0.7, s=100)
+    plt.scatter(results_df['total_parameters'], results_df['test_runtime'], 
+               c='red', alpha=0.7, s=100)
     plt.xlabel('Total Parameters')
-    plt.ylabel('Total Runtime (seconds)')
-    plt.title('Model Parameters vs Runtime Analysis')
+    plt.ylabel('Test Runtime (seconds)')
+    plt.title('Model Parameters vs Test Runtime Analysis')
     plt.grid(True, alpha=0.3)
     
     # Add trend line
-    z = np.polyfit(results_df['total_parameters'], results_df['total_runtime'], 1)
+    z = np.polyfit(results_df['total_parameters'], results_df['test_runtime'], 1)
     p = np.poly1d(z)
     plt.plot(results_df['total_parameters'], p(results_df['total_parameters']), 
              "r--", alpha=0.8, label=f'Trend line')
@@ -362,7 +302,7 @@ def create_plots(results_df, output_dir):
     # Add model names as labels
     for i, row in results_df.iterrows():
         plt.annotate(row['model_name'], 
-                    (row['total_parameters'], row['total_runtime']),
+                    (row['total_parameters'], row['test_runtime']),
                     xytext=(5, 5), textcoords='offset points',
                     fontsize=9, alpha=0.8)
     
@@ -370,11 +310,18 @@ def create_plots(results_df, output_dir):
     plt.tight_layout()
     
     # Save the focused plot
-    focused_plot_path = os.path.join(output_dir, 'parameters_vs_runtime.png')
-    plt.savefig(focused_plot_path, dpi=300, bbox_inches='tight')
-    print(f"Parameters vs Runtime plot saved to: {focused_plot_path}")
+    test_plot_path = os.path.join(output_dir, 'parameters_vs_test_runtime.png')
+    plt.savefig(test_plot_path, dpi=300, bbox_inches='tight')
+    print(f"Parameters vs Test Runtime plot saved to: {test_plot_path}")
     
     plt.show()
+
+
+def create_plots(results_df, output_dir):
+    """Create plots for the analysis results - modified to focus on test runtime."""
+    
+    # Only create the test runtime plot
+    create_test_runtime_plot(results_df, output_dir)
 
 
 def batch_analyze_models(model_paths, data_dir, output_dir):
@@ -406,7 +353,7 @@ def batch_analyze_models(model_paths, data_dir, output_dir):
             print(f"-"*60)
             print(f"Parameters: {result['total_parameters']:,}")
             print(f"Total Samples: {result['total_samples']:,}")
-            print(f"Total Runtime: {result['total_runtime']:.2f} seconds")
+            print(f"Test Runtime: {result['test_runtime']:.2f} seconds")
             print(f"Results saved to: {result['result_folder']}")
             print(f"-"*60)
             
@@ -424,12 +371,12 @@ def batch_analyze_models(model_paths, data_dir, output_dir):
     print(f"Total Models Analyzed: {len(all_results)}")
     print(f"Total Samples per Model: {results_df['total_samples'].iloc[0] if len(results_df) > 0 else 'N/A'}")
     print(f"\nParameter Range: {results_df['total_parameters'].min():,} - {results_df['total_parameters'].max():,}")
-    print(f"Runtime Range: {results_df['total_runtime'].min():.2f} - {results_df['total_runtime'].max():.2f} seconds")
+    print(f"Test Runtime Range: {results_df['test_runtime'].min():.2f} - {results_df['test_runtime'].max():.2f} seconds")
     print(f"\nModel Performance Summary:")
-    print(f"{'Model':<25} {'Parameters':<15} {'Runtime (s)':<15} {'Samples':<10}")
+    print(f"{'Model':<25} {'Parameters':<15} {'Test Runtime (s)':<15} {'Samples':<10}")
     print("-" * 70)
     for _, row in results_df.iterrows():
-        print(f"{row['model_name']:<25} {row['total_parameters']:<15,} {row['total_runtime']:<15.2f} {row['total_samples']:<10,}")
+        print(f"{row['model_name']:<25} {row['total_parameters']:<15,} {row['test_runtime']:<15.2f} {row['total_samples']:<10,}")
     
     # Save comprehensive summary to txt file
     summary_file = os.path.join(output_dir, 'COMPREHENSIVE_ANALYSIS_SUMMARY.txt')
@@ -445,17 +392,17 @@ def batch_analyze_models(model_paths, data_dir, output_dir):
         f.write(f"\n")
         f.write(f"STATISTICS:\n")
         f.write(f"Parameter Range: {results_df['total_parameters'].min():,} - {results_df['total_parameters'].max():,}\n")
-        f.write(f"Runtime Range: {results_df['total_runtime'].min():.2f} - {results_df['total_runtime'].max():.2f} seconds\n")
-        f.write(f"Average Runtime: {results_df['total_runtime'].mean():.2f} seconds\n")
+        f.write(f"Test Runtime Range: {results_df['test_runtime'].min():.2f} - {results_df['test_runtime'].max():.2f} seconds\n")
+        f.write(f"Average Test Runtime: {results_df['test_runtime'].mean():.2f} seconds\n")
         f.write(f"Average Parameters: {results_df['total_parameters'].mean():,.0f}\n")
         f.write(f"\n")
         f.write("="*80 + "\n")
         f.write("DETAILED MODEL PERFORMANCE SUMMARY\n")
         f.write("="*80 + "\n")
-        f.write(f"{'Model':<25} {'Parameters':<15} {'Runtime (s)':<15} {'Samples':<10}\n")
+        f.write(f"{'Model':<25} {'Parameters':<15} {'Test Runtime (s)':<15} {'Samples':<10}\n")
         f.write("-" * 70 + "\n")
         for _, row in results_df.iterrows():
-            f.write(f"{row['model_name']:<25} {row['total_parameters']:<15,} {row['total_runtime']:<15.2f} {row['total_samples']:<10,}\n")
+            f.write(f"{row['model_name']:<25} {row['total_parameters']:<15,} {row['test_runtime']:<15.2f} {row['total_samples']:<10,}\n")
         f.write("="*80 + "\n")
         f.write("\n")
         f.write("RUNTIME BREAKDOWN BY MODEL:\n")
@@ -489,15 +436,15 @@ def batch_analyze_models(model_paths, data_dir, output_dir):
         f.write(f"Total Models: {len(all_results)}\n")
         f.write(f"Analysis Date: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
         f.write("\nFAST FACTS:\n")
-        f.write(f"• Fastest Model: {results_df.loc[results_df['total_runtime'].idxmin(), 'model_name']} ({results_df['total_runtime'].min():.2f}s)\n")
-        f.write(f"• Slowest Model: {results_df.loc[results_df['total_runtime'].idxmax(), 'model_name']} ({results_df['total_runtime'].max():.2f}s)\n")
+        f.write(f"• Fastest Test Model: {results_df.loc[results_df['test_runtime'].idxmin(), 'model_name']} ({results_df['test_runtime'].min():.2f}s)\n")
+        f.write(f"• Slowest Test Model: {results_df.loc[results_df['test_runtime'].idxmax(), 'model_name']} ({results_df['test_runtime'].max():.2f}s)\n")
         f.write(f"• Smallest Model: {results_df.loc[results_df['total_parameters'].idxmin(), 'model_name']} ({results_df['total_parameters'].min():,} params)\n")
         f.write(f"• Largest Model: {results_df.loc[results_df['total_parameters'].idxmax(), 'model_name']} ({results_df['total_parameters'].max():,} params)\n")
         f.write(f"\nSee 'COMPREHENSIVE_ANALYSIS_SUMMARY.txt' for detailed results\n")
     
     print(f"Quick summary saved to: {quick_summary_file}")
     
-    # Create plots
+    # Create plots (now only test runtime plot)
     if len(results_df) > 0:
         create_plots(results_df, output_dir)
     
@@ -510,7 +457,7 @@ def batch_analyze_models(model_paths, data_dir, output_dir):
     print(f"   • COMPREHENSIVE_ANALYSIS_SUMMARY.txt")
     print(f"   • QUICK_SUMMARY.txt")
     print(f"   • batch_analysis_results.csv")
-    print(f"📊 Plots: parameters_vs_runtime.png, model_analysis_plots.png")
+    print(f"📊 Plot: parameters_vs_test_runtime.png")
     print(f"="*80)
     
     return results_df
@@ -572,7 +519,7 @@ def main():
     else:
         # Batch analysis
         results_df = batch_analyze_models(model_paths, args.data_dir, args.output_dir)
-        print(f"\nBatch analysis complete. Results and plots saved to {args.output_dir}")
+        print(f"\nBatch analysis complete. Results and plot saved to {args.output_dir}")
 
 
 if __name__ == '__main__':
