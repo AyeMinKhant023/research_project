@@ -233,7 +233,7 @@ def train(model_path, data_dir, output_dir, batch_size=8):
   image_paths, labels, label_map = get_image_paths(data_dir)
   train_and_val_dataset, test_dataset = shuffle_and_split(image_paths, labels)
 
-  interpreter = tf.lite.Interpreter(model_path, num_threads=8) # The place to change threads
+  interpreter = tf.lite.Interpreter(model_path, num_threads=4) # The place to change threads
 
   # print('error here 3')
   print('Extract embeddings for data_train')

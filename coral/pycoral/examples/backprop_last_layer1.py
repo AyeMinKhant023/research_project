@@ -220,45 +220,31 @@ def train(model_path, data_dir, output_dir):
   print('Feature extractor for validation dataset takes %.2f seconds' % (t3 - t2))
 
   # Construct model and start training
-  # weight_scale = 5e-2
-  # reg = 0.0
-  # feature_dim = train_and_val_dataset['data_train'].shape[1]
-  # print('Feature dimension: %d' % feature_dim)
-  # num_classes = np.max(train_and_val_dataset['labels_train']) + 1
-  # model = SoftmaxRegression(
-  #     feature_dim, num_classes, weight_scale=weight_scale, reg=reg)
+  weight_scale = 5e-2
+  reg = 0.0
+  feature_dim = train_and_val_dataset['data_train'].shape[1]
+  print('Feature dimension: %d' % feature_dim)
+  num_classes = np.max(train_and_val_dataset['labels_train']) + 1
+  head = SoftmaxRegression(
+      feature_dim, num_classes, weight_scale=weight_scale, reg=reg)
 
-  # learning_rate = 1e-2
-  # batch_size = 100
-  # num_iter = 500
-  # model.train_with_sgd(
-  #     train_and_val_dataset, num_iter, learning_rate, batch_size=batch_size)
-  # t2 = time.perf_counter()
-  # print('Training takes %.2f seconds' % (t2 - t1))
-
-  # Append learned weights to input model and save as tflite format.
-  # out_model_path = os.path.join(output_dir, 'retrained_model_edgetpu.tflite')
-  # with open(out_model_path, 'wb') as f:
-  #   f.write(model.serialize_model(model_path))
-  # print('Model %s saved.' % out_model_path)
-  # label_map_path = os.path.join(output_dir, 'label_map.txt')
-  # save_label_map(label_map, label_map_path)
-  # print('Label map %s saved.' % label_map_path)
-  # t3 = time.perf_counter()
-  # print('Saving retrained model and label map takes %.2f seconds' % (t3 - t2))
-
-  # retrained_interpreter = make_interpreter(out_model_path, device=':0')
-  # retrained_interpreter.allocate_tensors()
+  learning_rate = 1e-2
+  batch_size = 100
+  num_iter = 500
+  head.train_with_sgd(
+      train_and_val_dataset, num_iter, learning_rate, batch_size=batch_size)
+  t2 = time.perf_counter()
+  print('Training takes %.2f seconds' % (t2 - t1))
 
   t3 = time.perf_counter()
   print('Extract embeddings for data_test')
-  test_embeddings = extract_embeddings(test_dataset['data_test'],
+  test_embeddings = extract_embeddings(test_dataset['data_test'], #
                                        interpreter)
-  # print('Compute softmax regression predictions')
-  # predictions = model.forward(test_embeddings)
-  # saved_model_acc = np.mean(
-  #     np.argmax(predictions, axis=1) == test_dataset['labels_test'])
-  # print('Saved tflite model test accuracy: %.2f%%' % (saved_model_acc * 100))
+  print('Compute softmax regression predictions')
+  predictions = head.forward(test_embeddings) #
+  saved_model_acc = np.mean(
+      np.argmax(predictions, axis=1) == test_dataset['labels_test'])
+  print('Saved tflite model test accuracy: %.2f%%' % (saved_model_acc * 100))
   t4 = time.perf_counter()
   print('Feature extractor for test dataset takes %.2f seconds' % (t4 - t3))
 
