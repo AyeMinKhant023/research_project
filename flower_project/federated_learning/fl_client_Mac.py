@@ -82,8 +82,11 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
         feature_dim = output_shape[1]
     elif len(output_shape) == 1:  # [features] (no batch dimension)
         feature_dim = output_shape[0]
+    elif len(output_shape) == 4:  # [batch_size, height, width, features] - typical CNN output
+        feature_dim = output_shape[3]
     else:
-        raise ValueError(f"Unexpected output shape: {output_shape}")
+        # For any other shape, take the last dimension as features
+        feature_dim = output_shape[-1]
     
     print(f"Feature dimension: {feature_dim}")
     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
@@ -156,6 +159,9 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
                 embeddings[idx, :] = output_data[0]
             elif len(output_data.shape) == 1:  # [features] (no batch dimension)
                 embeddings[idx, :] = output_data
+            elif len(output_data.shape) == 4:  # [batch_size, height, width, features]
+                # For 4D output like [1, 1, 1, 1024], squeeze and take the features
+                embeddings[idx, :] = output_data.squeeze()
             else:
                 # Flatten if needed
                 embeddings[idx, :] = output_data.flatten()
