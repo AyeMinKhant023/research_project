@@ -69,8 +69,23 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
     
+    # Debug output shape
+    print(f"Input details: {input_details[0]}")
+    print(f"Output details: {output_details[0]}")
+    
     # Get the feature dimension from output shape
-    feature_dim = output_details[0]['shape'][1]
+    output_shape = output_details[0]['shape']
+    print(f"Output shape: {output_shape}")
+    
+    # Handle different output shapes
+    if len(output_shape) == 2:  # [batch_size, features]
+        feature_dim = output_shape[1]
+    elif len(output_shape) == 1:  # [features] (no batch dimension)
+        feature_dim = output_shape[0]
+    else:
+        raise ValueError(f"Unexpected output shape: {output_shape}")
+    
+    print(f"Feature dimension: {feature_dim}")
     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
     
     # Check if model expects quantized input (UINT8)
@@ -127,6 +142,7 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
             
             # Get output
             output_data = interpreter.get_tensor(output_details[0]['index'])
+            print(f"Raw output shape: {output_data.shape}")
             
             # Handle quantized output if needed
             if output_details[0]['dtype'] == np.uint8:
@@ -135,7 +151,18 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
                 output_zero_point = output_details[0]['quantization_parameters']['zero_points'][0]
                 output_data = (output_data.astype(np.float32) - output_zero_point) * output_scale
             
-            embeddings[idx, :] = output_data[0]
+            # Handle different output shapes
+            if len(output_data.shape) == 2:  # [batch_size, features]
+                embeddings[idx, :] = output_data[0]
+            elif len(output_data.shape) == 1:  # [features] (no batch dimension)
+                embeddings[idx, :] = output_data
+            else:
+                # Flatten if needed
+                embeddings[idx, :] = output_data.flatten()
+            
+            if idx == 0:  # Print debug info for first image only
+                print(f"First embedding shape: {embeddings[idx, :].shape}")
+                print(f"First few embedding values: {embeddings[idx, :5]}")
 
     return embeddings
 
