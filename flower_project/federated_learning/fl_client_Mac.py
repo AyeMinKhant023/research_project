@@ -145,7 +145,7 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
             
             # Get output
             output_data = interpreter.get_tensor(output_details[0]['index'])
-            print(f"Raw output shape: {output_data.shape}")
+            # print(f"Raw output shape: {output_data.shape}")
             
             # Handle quantized output if needed
             if output_details[0]['dtype'] == np.uint8:
