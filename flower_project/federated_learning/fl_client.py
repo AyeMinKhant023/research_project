@@ -3,9 +3,15 @@ import numpy as np
 import os
 import time
 from PIL import Image
-from pycoral.adapters import classify
-from pycoral.adapters import common
-from pycoral.utils.edgetpu import make_interpreter
+import platform
+if platform.system() != 'Darwin':
+    from pycoral.adapters import classify
+    from pycoral.adapters import common
+    from pycoral.utils.edgetpu import make_interpreter
+else:
+    classify = None
+    common = None
+    make_interpreter = None
 from softmax_regression import SoftmaxRegression
 import contextlib
 from typing import Dict, List, Tuple, Optional
