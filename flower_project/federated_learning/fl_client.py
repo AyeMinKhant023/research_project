@@ -88,8 +88,12 @@ class FederatedClient(fl.client.NumPyClient):
         self.num_classes = num_classes
         
         # Initialize the backbone (embedding extractor) - this stays frozen
-        self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
-        self.interpreter.allocate_tensors()
+        if platform.system() != 'Darwin':
+            self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
+            self.interpreter.allocate_tensors()
+        else:
+            self.interpreter = None
+
         
         # Load and preprocess data
         self.load_data()
