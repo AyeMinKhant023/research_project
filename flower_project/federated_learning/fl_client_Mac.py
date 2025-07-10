@@ -3,9 +3,7 @@ import numpy as np
 import os
 import time
 from PIL import Image
-from pycoral.adapters import classify
-from pycoral.adapters import common
-from pycoral.utils.edgetpu import make_interpreter
+import tensorflow as tf
 from softmax_regression import SoftmaxRegression
 import contextlib
 from typing import Dict, List, Tuple, Optional
@@ -66,30 +64,102 @@ def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1):
     return train_and_val_dataset, test_dataset
 
 
-def extract_embeddings(image_paths, interpreter):
-    """Uses model to process images as embeddings."""
-    input_size = common.input_size(interpreter)
-    feature_dim = classify.num_classes(interpreter)
+def extract_embeddings_tflite(image_paths, interpreter, input_size):
+    """Uses TensorFlow Lite model to process images as embeddings."""
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    
+    # Get the feature dimension from output shape
+    feature_dim = output_details[0]['shape'][1]
     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
     
     for idx, path in enumerate(image_paths):
         with test_image(path) as img:
-            common.set_input(interpreter, img.resize(input_size, Image.NEAREST))
+            # Resize image to input size
+            img_resized = img.resize(input_size, Image.NEAREST)
+            
+            # Convert to numpy array and normalize
+            img_array = np.array(img_resized).astype(np.float32)
+            
+            # Handle grayscale images
+            if len(img_array.shape) == 2:
+                img_array = np.expand_dims(img_array, axis=-1)
+            
+            # Handle RGB images - ensure 3 channels
+            if img_array.shape[-1] == 3:
+                pass  # Already RGB
+            elif img_array.shape[-1] == 1:
+                img_array = np.repeat(img_array, 3, axis=-1)
+            
+            # Normalize to [0, 1] if needed
+            if img_array.max() > 1.0:
+                img_array = img_array / 255.0
+            
+            # Add batch dimension
+            img_array = np.expand_dims(img_array, axis=0)
+            
+            # Set input tensor
+            interpreter.set_tensor(input_details[0]['index'], img_array)
+            
+            # Run inference
             interpreter.invoke()
-            embeddings[idx, :] = classify.get_scores(interpreter)
+            
+            # Get output
+            output_data = interpreter.get_tensor(output_details[0]['index'])
+            embeddings[idx, :] = output_data[0]
 
     return embeddings
 
 
+def extract_embeddings_saved_model(image_paths, model, input_size):
+    """Uses TensorFlow SavedModel to process images as embeddings."""
+    embeddings_list = []
+    
+    for idx, path in enumerate(image_paths):
+        with test_image(path) as img:
+            # Resize image to input size
+            img_resized = img.resize(input_size, Image.NEAREST)
+            
+            # Convert to numpy array and normalize
+            img_array = np.array(img_resized).astype(np.float32)
+            
+            # Handle grayscale images
+            if len(img_array.shape) == 2:
+                img_array = np.expand_dims(img_array, axis=-1)
+            
+            # Handle RGB images - ensure 3 channels
+            if img_array.shape[-1] == 3:
+                pass  # Already RGB
+            elif img_array.shape[-1] == 1:
+                img_array = np.repeat(img_array, 3, axis=-1)
+            
+            # Normalize to [0, 1] if needed
+            if img_array.max() > 1.0:
+                img_array = img_array / 255.0
+            
+            # Add batch dimension
+            img_array = np.expand_dims(img_array, axis=0)
+            
+            # Convert to tensor
+            img_tensor = tf.convert_to_tensor(img_array)
+            
+            # Run inference
+            output = model(img_tensor)
+            embeddings_list.append(output.numpy()[0])
+    
+    return np.array(embeddings_list)
+
+
 class FederatedClient(fl.client.NumPyClient):
-    def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int):
+    def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int, 
+                 input_size: Tuple[int, int] = (224, 224)):
         self.embedding_extractor_path = embedding_extractor_path
         self.data_dir = data_dir
         self.num_classes = num_classes
+        self.input_size = input_size
         
         # Initialize the backbone (embedding extractor) - this stays frozen
-        self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
-        self.interpreter.allocate_tensors()
+        self.load_model()
         
         # Load and preprocess data
         self.load_data()
@@ -109,6 +179,22 @@ class FederatedClient(fl.client.NumPyClient):
         print(f"- Training samples: {len(self.train_embeddings)}")
         print(f"- Validation samples: {len(self.val_embeddings)}")
     
+    def load_model(self):
+        """Load the embedding extractor model."""
+        print(f"Loading model from: {self.embedding_extractor_path}")
+        
+        # Check if it's a TensorFlow Lite model
+        if self.embedding_extractor_path.endswith('.tflite'):
+            self.interpreter = tf.lite.Interpreter(model_path=self.embedding_extractor_path)
+            self.interpreter.allocate_tensors()
+            self.model_type = 'tflite'
+            print("Loaded TensorFlow Lite model")
+        else:
+            # Assume it's a SavedModel
+            self.model = tf.saved_model.load(self.embedding_extractor_path)
+            self.model_type = 'saved_model'
+            print("Loaded TensorFlow SavedModel")
+    
     def load_data(self):
         """Load and preprocess local data."""
         print("Loading local data...")
@@ -117,13 +203,23 @@ class FederatedClient(fl.client.NumPyClient):
         
         # Extract embeddings using the backbone (frozen feature extractor)
         print("Extracting training embeddings...")
-        self.train_embeddings = extract_embeddings(
-            train_and_val_dataset['data_train'], self.interpreter)
+        if self.model_type == 'tflite':
+            self.train_embeddings = extract_embeddings_tflite(
+                train_and_val_dataset['data_train'], self.interpreter, self.input_size)
+        else:
+            self.train_embeddings = extract_embeddings_saved_model(
+                train_and_val_dataset['data_train'], self.model, self.input_size)
+        
         self.train_labels = train_and_val_dataset['labels_train']
         
         print("Extracting validation embeddings...")
-        self.val_embeddings = extract_embeddings(
-            train_and_val_dataset['data_val'], self.interpreter)
+        if self.model_type == 'tflite':
+            self.val_embeddings = extract_embeddings_tflite(
+                train_and_val_dataset['data_val'], self.interpreter, self.input_size)
+        else:
+            self.val_embeddings = extract_embeddings_saved_model(
+                train_and_val_dataset['data_val'], self.model, self.input_size)
+        
         self.val_labels = train_and_val_dataset['labels_val']
         
         # Prepare dataset for training
@@ -188,13 +284,15 @@ def main():
     
     parser = argparse.ArgumentParser()
     parser.add_argument("--embedding_extractor_path", required=True, 
-                       help="Path to embedding extractor tflite model")
+                       help="Path to embedding extractor model (.tflite or SavedModel)")
     parser.add_argument("--data_dir", required=True, 
                        help="Directory containing local training data")
     parser.add_argument("--num_classes", type=int, required=True,
                        help="Number of classes in the dataset")
     parser.add_argument("--server_address", default="localhost:8080",
                        help="Server address (default: localhost:8080)")
+    parser.add_argument("--input_size", type=int, nargs=2, default=[224, 224],
+                       help="Input image size (height width) (default: 224 224)")
     
     args = parser.parse_args()
     
@@ -202,7 +300,8 @@ def main():
     client = FederatedClient(
         args.embedding_extractor_path, 
         args.data_dir, 
-        args.num_classes
+        args.num_classes,
+        input_size=tuple(args.input_size)
     )
     
     # Start federated learning
