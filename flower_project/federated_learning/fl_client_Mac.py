@@ -73,13 +73,25 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
     feature_dim = output_details[0]['shape'][1]
     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
     
+    # Check if model expects quantized input (UINT8)
+    input_dtype = input_details[0]['dtype']
+    is_quantized = input_dtype == np.uint8
+    
+    # Get quantization parameters if quantized
+    if is_quantized:
+        input_scale = input_details[0]['quantization_parameters']['scales'][0]
+        input_zero_point = input_details[0]['quantization_parameters']['zero_points'][0]
+        print(f"Model expects quantized input (UINT8). Scale: {input_scale}, Zero point: {input_zero_point}")
+    else:
+        print(f"Model expects float input ({input_dtype})")
+    
     for idx, path in enumerate(image_paths):
         with test_image(path) as img:
             # Resize image to input size
             img_resized = img.resize(input_size, Image.NEAREST)
             
-            # Convert to numpy array and normalize
-            img_array = np.array(img_resized).astype(np.float32)
+            # Convert to numpy array
+            img_array = np.array(img_resized)
             
             # Handle grayscale images
             if len(img_array.shape) == 2:
@@ -91,9 +103,18 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
             elif img_array.shape[-1] == 1:
                 img_array = np.repeat(img_array, 3, axis=-1)
             
-            # Normalize to [0, 1] if needed
-            if img_array.max() > 1.0:
-                img_array = img_array / 255.0
+            # Prepare input based on model type
+            if is_quantized:
+                # For quantized models, keep values as UINT8 (0-255)
+                if img_array.max() <= 1.0:
+                    img_array = (img_array * 255).astype(np.uint8)
+                else:
+                    img_array = img_array.astype(np.uint8)
+            else:
+                # For float models, normalize to [0, 1]
+                img_array = img_array.astype(np.float32)
+                if img_array.max() > 1.0:
+                    img_array = img_array / 255.0
             
             # Add batch dimension
             img_array = np.expand_dims(img_array, axis=0)
@@ -106,6 +127,14 @@ def extract_embeddings_tflite(image_paths, interpreter, input_size):
             
             # Get output
             output_data = interpreter.get_tensor(output_details[0]['index'])
+            
+            # Handle quantized output if needed
+            if output_details[0]['dtype'] == np.uint8:
+                # Dequantize output
+                output_scale = output_details[0]['quantization_parameters']['scales'][0]
+                output_zero_point = output_details[0]['quantization_parameters']['zero_points'][0]
+                output_data = (output_data.astype(np.float32) - output_zero_point) * output_scale
+            
             embeddings[idx, :] = output_data[0]
 
     return embeddings
@@ -181,19 +210,35 @@ class FederatedClient(fl.client.NumPyClient):
     
     def load_model(self):
         """Load the embedding extractor model."""
+        # Expand user path and convert to absolute path
+        expanded_path = os.path.expanduser(self.embedding_extractor_path)
+        self.embedding_extractor_path = os.path.abspath(expanded_path)
+        
         print(f"Loading model from: {self.embedding_extractor_path}")
+        
+        # Check if file exists
+        if not os.path.exists(self.embedding_extractor_path):
+            raise FileNotFoundError(f"Model file not found: {self.embedding_extractor_path}")
         
         # Check if it's a TensorFlow Lite model
         if self.embedding_extractor_path.endswith('.tflite'):
-            self.interpreter = tf.lite.Interpreter(model_path=self.embedding_extractor_path)
-            self.interpreter.allocate_tensors()
-            self.model_type = 'tflite'
-            print("Loaded TensorFlow Lite model")
+            try:
+                self.interpreter = tf.lite.Interpreter(model_path=self.embedding_extractor_path)
+                self.interpreter.allocate_tensors()
+                self.model_type = 'tflite'
+                print("Loaded TensorFlow Lite model")
+            except Exception as e:
+                print(f"Error loading TFLite model: {e}")
+                raise
         else:
             # Assume it's a SavedModel
-            self.model = tf.saved_model.load(self.embedding_extractor_path)
-            self.model_type = 'saved_model'
-            print("Loaded TensorFlow SavedModel")
+            try:
+                self.model = tf.saved_model.load(self.embedding_extractor_path)
+                self.model_type = 'saved_model'
+                print("Loaded TensorFlow SavedModel")
+            except Exception as e:
+                print(f"Error loading SavedModel: {e}")
+                raise
     
     def load_data(self):
         """Load and preprocess local data."""
