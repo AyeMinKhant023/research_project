@@ -153,8 +153,10 @@ class FederatedClient(fl.client.NumPyClient):
         
         # Local training parameters
         learning_rate = config.get("learning_rate", 1e-2)
-        batch_size = config.get("batch_size", 100)
-        num_iter = config.get("num_iter", 100)  # Reduced for federated setting
+        batch_size = config.get("batch_size", 64)
+        num_iter = 23 #config.get("num_iter", 2)  # Reduced for federated settingß
+
+        print(f"NUM ITER={num_iter}")
         
         print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
         
