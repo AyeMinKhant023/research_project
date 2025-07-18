@@ -72,7 +72,7 @@ def extract_embeddings(image_paths, interpreter):
     feature_dim = classify.num_classes(interpreter)
     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
     
-    for idx, path in enumerate(image_paths):
+    for idx, path in enumerate(image_paths): 
         with test_image(path) as img:
             common.set_input(interpreter, img.resize(input_size, Image.NEAREST))
             interpreter.invoke()
@@ -99,73 +99,22 @@ def extract_embeddings(image_paths, interpreter):
 #             embeddings[idx, :] = output.squeeze()
 #     return embeddings
 
-# With tflite Interpreter
-# def extract_embeddings(image_paths, interpreter):
-#     """Uses TensorFlow Lite model to process images as embeddings."""
-#     input_details = interpreter.get_input_details()
-#     output_details = interpreter.get_output_details()
-    
-#     input_shape = input_details[0]['shape']
-#     # Note: TensorFlow Lite input shape is usually [batch, height, width, channels]
-#     input_size = (input_shape[2], input_shape[1])  # (width, height)
-#     feature_dim = output_details[0]['shape'][-1]
-    
-#     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-    
-#     for idx, path in enumerate(image_paths):
-#         with test_image(path) as img:
-#             # Resize image to match model input size
-#             img_resized = img.resize(input_size, Image.NEAREST)
-            
-#             # Convert to numpy array and normalize if needed
-#             img_array = np.array(img_resized).astype(np.float32)
-            
-#             # Handle grayscale vs RGB
-#             if len(img_array.shape) == 2:  # Grayscale
-#                 if input_shape[3] == 3:  # Model expects RGB
-#                     img_array = np.stack([img_array] * 3, axis=-1)
-#                 elif input_shape[3] == 1:  # Model expects grayscale
-#                     img_array = np.expand_dims(img_array, axis=-1)
-#             elif len(img_array.shape) == 3:  # RGB/RGBA
-#                 if input_shape[3] == 1:  # Model expects grayscale
-#                     img_array = np.mean(img_array, axis=-1, keepdims=True)
-#                 elif input_shape[3] == 3 and img_array.shape[2] == 4:  # RGBA to RGB
-#                     img_array = img_array[:, :, :3]
-            
-#             # Normalize pixel values (common for many models)
-#             # You might need to adjust this based on your model's requirements
-#             if img_array.max() > 1.0:
-#                 img_array = img_array / 255.0
-            
-#             # Add batch dimension
-#             img_array = np.expand_dims(img_array, axis=0)
-            
-#             # Set input tensor
-#             interpreter.set_tensor(input_details[0]['index'], img_array)
-            
-#             # Run inference
-#             interpreter.invoke()
-            
-#             # Get output
-#             output = interpreter.get_tensor(output_details[0]['index'])
-#             embeddings[idx, :] = output.squeeze()
-    
-#     return embeddings
-
 class FederatedClient(fl.client.NumPyClient):
     def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int):
         self.embedding_extractor_path = embedding_extractor_path
         self.data_dir = data_dir
         self.num_classes = num_classes
-        
+
         # Initialize the backbone (embedding extractor) - this stays frozen
+
         # For Edge TPU Interpreter
-        # from pycoral.utils.edgetpu import make_interpreter
-        # self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
+        from pycoral.utils.edgetpu import make_interpreter
+        self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
 
         # With tflite Interpreter
-        import tensorflow as tf
-        self.interpreter = tf.lite.Interpreter(model_path=embedding_extractor_path)
+        # import tensorflow as tf
+        # self.interpreter = tf.lite.Interpreter(model_path=embedding_extractor_path)
+        
         self.interpreter.allocate_tensors() #
 
         
