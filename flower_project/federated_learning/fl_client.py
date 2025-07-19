@@ -112,19 +112,19 @@ class FederatedClient(fl.client.NumPyClient):
 
         ## For Edge TPU Interpreter #
         from pycoral.utils.edgetpu import make_interpreter
-        start = time.time()
+        start = time.time() #
         self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
         self.interpreter.allocate_tensors()
-        end = time.time()
-        print(f"Time to load model (EdgeTPU Interpreter): {end - start:.2f} seconds")
+        end = time.time() #
+        print(f"Time to load model (EdgeTPU Interpreter): {end - start:.2f} seconds") #
 
         ## With tflite Interpreter #
         # import tensorflow as tf
-        # start = time.time()
+        # start = time.time() #
         # self.interpreter = tf.lite.Interpreter(model_path=embedding_extractor_path)
         # self.interpreter.allocate_tensors()
-        # end = time.time()
-        # print(f"Time to load model (TFLite Interpreter): {end - start:.2f} seconds")
+        # end = time.time() #
+        # print(f"Time to load model (TFLite Interpreter): {end - start:.2f} seconds") #
         ##########################################################################################
 
         # Load and preprocess data
@@ -154,20 +154,20 @@ class FederatedClient(fl.client.NumPyClient):
         # Extract embeddings using the backbone (frozen feature extractor)
         # Training embeddings
         print("Extracting training embeddings...")
-        start = time.time()
+        start = time.time() #
         self.train_embeddings = extract_embeddings(
             train_and_val_dataset['data_train'], self.interpreter)
-        end = time.time()
-        print(f"Time to extract training embeddings (perform): {end - start:.2f} seconds")
+        end = time.time() #
+        print(f"Time to extract training embeddings (perform): {end - start:.2f} seconds") #
         self.train_labels = train_and_val_dataset['labels_train']
         
         # Validation embeddings
         print("Extracting validation embeddings...")
-        start = time.time()
+        start = time.time() #
         self.val_embeddings = extract_embeddings(
             train_and_val_dataset['data_val'], self.interpreter)
-        end = time.time()
-        print(f"Time to extract validation embeddings (perform): {end - start:.2f} seconds")
+        end = time.time() #
+        print(f"Time to extract validation embeddings (perform): {end - start:.2f} seconds") #
         self.val_labels = train_and_val_dataset['labels_val']
         
         # Prepare dataset for training
@@ -205,15 +205,15 @@ class FederatedClient(fl.client.NumPyClient):
         print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
         
         # Train the head (only the head parameters are updated)
-        start = time.time()
+        start = time.time() #
         self.head.train_with_sgd(
             self.dataset, 
             num_iter, 
             learning_rate, 
             batch_size=batch_size
         )
-        end = time.time()
-        print(f"Time to train classification head: {end - start:.2f} seconds")
+        end = time.time() #
+        print(f"Time to train classification head: {end - start:.2f} seconds") #
 
         # Return updated parameters and training metrics
         return self.get_parameters(config), len(self.train_embeddings), {}

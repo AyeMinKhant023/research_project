@@ -254,7 +254,7 @@ class FederatedClient(fl.client.NumPyClient):
             raise FileNotFoundError(f"Model file not found: {self.embedding_extractor_path}")
         
         # Check if it's a TensorFlow Lite model
-        start = time.time()
+        start = time.time() #
         if self.embedding_extractor_path.endswith('.tflite'):
             try:
                 self.interpreter = tf.lite.Interpreter(model_path=self.embedding_extractor_path)
@@ -273,8 +273,8 @@ class FederatedClient(fl.client.NumPyClient):
             except Exception as e:
                 print(f"Error loading SavedModel: {e}")
                 raise
-        end = time.time()
-        print(f"Time to load model {end - start:.2f} seconds")
+        end = time.time() #
+        print(f"Time to load model {end - start:.2f} seconds") #
     
     def load_data(self):
         """Load and preprocess local data."""
@@ -284,7 +284,7 @@ class FederatedClient(fl.client.NumPyClient):
         
         # Extract embeddings using the backbone (frozen feature extractor)
         # Training embeddings
-        start = time.time()
+        start = time.time() #
         print("Extracting training embeddings...")
         if self.model_type == 'tflite':
             self.train_embeddings = extract_embeddings_tflite(
@@ -292,13 +292,13 @@ class FederatedClient(fl.client.NumPyClient):
         else:
             self.train_embeddings = extract_embeddings_saved_model(
                 train_and_val_dataset['data_train'], self.model, self.input_size)
-        end = time.time()
-        print(f"Time to extract training embeddings: {end - start:.2f} seconds")
+        end = time.time() #
+        print(f"Time to extract training embeddings: {end - start:.2f} seconds") #
         
         self.train_labels = train_and_val_dataset['labels_train']
         
         # Validation embeddings
-        start = time.time()
+        start = time.time() #
         print("Extracting validation embeddings...")
         if self.model_type == 'tflite':
             self.val_embeddings = extract_embeddings_tflite(
@@ -306,8 +306,8 @@ class FederatedClient(fl.client.NumPyClient):
         else:
             self.val_embeddings = extract_embeddings_saved_model(
                 train_and_val_dataset['data_val'], self.model, self.input_size)
-        end = time.time()
-        print(f"Time to extract validation embeddings: {end - start:.2f} seconds")
+        end = time.time() #
+        print(f"Time to extract validation embeddings: {end - start:.2f} seconds") #
         
         self.val_labels = train_and_val_dataset['labels_val']
 
@@ -345,16 +345,16 @@ class FederatedClient(fl.client.NumPyClient):
         print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
         
         # Train the head (only the head parameters are updated)
-        print("Training classification head...")
-        start = time.time()
+        print("Training classification head ...")
+        start = time.time() #
         self.head.train_with_sgd(
             self.dataset, 
             num_iter, 
             learning_rate, 
             batch_size=batch_size
         )
-        end = time.time()
-        print(f"Time to train classification head: {end - start:.2f} seconds")
+        end = time.time() #
+        print(f"Time to train classification head: {end - start:.2f} seconds") #
 
         # Return updated parameters and training metrics
         return self.get_parameters(config), len(self.train_embeddings), {}
