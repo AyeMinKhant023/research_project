@@ -65,7 +65,8 @@ def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1):
     
     return train_and_val_dataset, test_dataset
 
-# With Edge TPU Interpreter
+##########################################################################################
+## With Edge TPU Interpreter #
 def extract_embeddings(image_paths, interpreter):
     """Uses model to process images as embeddings."""
     input_size = common.input_size(interpreter)
@@ -80,7 +81,7 @@ def extract_embeddings(image_paths, interpreter):
 
     return embeddings
 
-# With tflite Interpreter
+## With tflite Interpreter #
 # def extract_embeddings(image_paths, interpreter):
 #     input_details = interpreter.get_input_details()
 #     output_details = interpreter.get_output_details()
@@ -98,6 +99,7 @@ def extract_embeddings(image_paths, interpreter):
 #             output = interpreter.get_tensor(output_details[0]['index'])
 #             embeddings[idx, :] = output.squeeze()
 #     return embeddings
+##########################################################################################
 
 class FederatedClient(fl.client.NumPyClient):
     def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int):
@@ -105,20 +107,27 @@ class FederatedClient(fl.client.NumPyClient):
         self.data_dir = data_dir
         self.num_classes = num_classes
 
+        ##########################################################################################
         # Initialize the backbone (embedding extractor) - this stays frozen
 
-        # For Edge TPU Interpreter
+        ## For Edge TPU Interpreter #
         from pycoral.utils.edgetpu import make_interpreter
+        start = time.time()
         self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
+        self.interpreter.allocate_tensors()
+        end = time.time()
+        print("Time to load model (EdgeTPU Interpreter):", end - start, "seconds")
 
-        # With tflite Interpreter
+        ## With tflite Interpreter #
         # import tensorflow as tf
+        # start = time.time()
         # self.interpreter = tf.lite.Interpreter(model_path=embedding_extractor_path)
-        
-        self.interpreter.allocate_tensors() #
+        # self.interpreter.allocate_tensors()
+        # end = time.time()
+        # print("Time to load model (TFLite Interpreter):", end - start, "seconds")
+        ##########################################################################################
 
-        
-        # Lccoad and preprocess data
+        # Load and preprocess data
         self.load_data()
         
         # Initialize head (softmax regression) - this is what gets trained
@@ -143,14 +152,22 @@ class FederatedClient(fl.client.NumPyClient):
         train_and_val_dataset, test_dataset = shuffle_and_split(image_paths, labels)
         
         # Extract embeddings using the backbone (frozen feature extractor)
+        # Train embeddings
         print("Extracting training embeddings...")
+        start = time.time()
         self.train_embeddings = extract_embeddings(
             train_and_val_dataset['data_train'], self.interpreter)
+        end = time.time()
+        print("Time to extract training embeddings (perform):", end - start, "seconds")
         self.train_labels = train_and_val_dataset['labels_train']
         
+        # Validation embeddings
         print("Extracting validation embeddings...")
+        start = time.time()
         self.val_embeddings = extract_embeddings(
             train_and_val_dataset['data_val'], self.interpreter)
+        end = time.time()
+        print("Time to extract validation embeddings (perform):", end - start, "seconds")
         self.val_labels = train_and_val_dataset['labels_val']
         
         # Prepare dataset for training
@@ -188,13 +205,16 @@ class FederatedClient(fl.client.NumPyClient):
         print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
         
         # Train the head (only the head parameters are updated)
+        start = time.time()
         self.head.train_with_sgd(
             self.dataset, 
             num_iter, 
             learning_rate, 
             batch_size=batch_size
         )
-        
+        end = time.time()
+        print("Time to train classification head:", end - start, "seconds")
+
         # Return updated parameters and training metrics
         return self.get_parameters(config), len(self.train_embeddings), {}
     
