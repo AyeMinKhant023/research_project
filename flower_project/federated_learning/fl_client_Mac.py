@@ -274,7 +274,7 @@ class FederatedClient(fl.client.NumPyClient):
                 print(f"Error loading SavedModel: {e}")
                 raise
         end = time.time() #
-        print(f"Time to load model {end - start:.2f} seconds") #
+        print(f"Time to load model: {end - start:.2f} seconds") #
     
     def load_data(self):
         """Load and preprocess local data."""
@@ -293,7 +293,7 @@ class FederatedClient(fl.client.NumPyClient):
             self.train_embeddings = extract_embeddings_saved_model(
                 train_and_val_dataset['data_train'], self.model, self.input_size)
         end = time.time() #
-        print(f"Time to extract training embeddings: {end - start:.2f} seconds") #
+        print(f"Time to extract training embeddings (perform): {end - start:.2f} seconds") #
         
         self.train_labels = train_and_val_dataset['labels_train']
         
@@ -307,7 +307,7 @@ class FederatedClient(fl.client.NumPyClient):
             self.val_embeddings = extract_embeddings_saved_model(
                 train_and_val_dataset['data_val'], self.model, self.input_size)
         end = time.time() #
-        print(f"Time to extract validation embeddings: {end - start:.2f} seconds") #
+        print(f"Time to extract validation embeddings (perform): {end - start:.2f} seconds") #
         
         self.val_labels = train_and_val_dataset['labels_val']
 
