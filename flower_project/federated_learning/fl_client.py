@@ -66,15 +66,48 @@ def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1):
     return train_and_val_dataset, test_dataset
 
 # Function to measure CPU and RAM usage
-def log_resource_usage(step_name):
-    process = psutil.Process(os.getpid())
-    cpu_percent = psutil.cpu_percent(interval=None, percpu=True)  # CPU usage per core
-    mem_info = process.memory_info()
-    mem_usage_mb = mem_info.rss / (1024 * 1024)  # RAM usage in MB
+import psutil
+import tracemalloc
+import time
+import threading
 
-    print(f"[RESOURCE] {step_name}")
-    print(f"  RAM Usage: {mem_usage_mb:.2f} MB")
-    print(f"  CPU Usage Per Core: {cpu_percent}")
+def log_resource_usage(label, func, *args, **kwargs):
+    process = psutil.Process()
+    cpu_percentages = []
+
+    # Monitor CPU in background
+    def monitor_cpu():
+        while not stop_event.is_set():
+            cpu = psutil.cpu_percent(percpu=True)
+            cpu_percentages.append(cpu)
+            time.sleep(0.1)  # sample every 100ms
+
+    stop_event = threading.Event()
+    monitor_thread = threading.Thread(target=monitor_cpu)
+
+    tracemalloc.start()
+    monitor_thread.start()
+
+    start_time = time.time()
+    result = func(*args, **kwargs)
+    end_time = time.time()
+
+    stop_event.set()
+    monitor_thread.join()
+    current, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+
+    # Calculate average CPU per core
+    cpu_array = list(zip(*cpu_percentages))  # transpose
+    avg_cpu_per_core = [sum(core)/len(core) for core in cpu_array]
+    ram_usage_mb = peak / (1024 * 1024)
+
+    print(f"\n[RESOURCE] Usage for {label}")
+    print(f"  Time: {end_time - start_time:.2f} sec")
+    print(f"  Peak RAM Usage: {ram_usage_mb:.2f} MB")
+    print(f"  Avg CPU Usage Per Core: {[round(c, 1) for c in avg_cpu_per_core]}")
+    
+    return result
 
 
 ##########################################################################################
@@ -124,11 +157,22 @@ class FederatedClient(fl.client.NumPyClient):
 
         # For Edge TPU Interpreter #
         from pycoral.utils.edgetpu import make_interpreter
+
         start = time.time() #
-        self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
-        self.interpreter.allocate_tensors()
+
+        def load_interpreter(model_path):
+            start = time.time() #
+            interpreter = make_interpreter(model_path, device=':0')
+            interpreter.allocate_tensors()
+            return interpreter
+
+        self.interpreter = log_resource_usage(
+            "Usage for Load Feature Extractor (EdgeTPU Interpreter)", load_interpreter, embedding_extractor_path)
+
         end = time.time() #
-        print(f"Time to load model (EdgeTPU Interpreter): {end - start:.2f} seconds") #
+        print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.2f} seconds") #
+
+        ##########################################################################################
 
         ## With tflite Interpreter #
         # import tensorflow as tf
@@ -138,8 +182,6 @@ class FederatedClient(fl.client.NumPyClient):
         # end = time.time() #
         # print(f"Time to load model (TFLite Interpreter): {end - start:.2f} seconds") #
 
-        # Printing resource usage for Load Feature Extractor
-        log_resource_usage("Usage for Load Feature Extractor")
         ##########################################################################################
 
         # Load and preprocess data
@@ -171,26 +213,25 @@ class FederatedClient(fl.client.NumPyClient):
         # Training embeddings
         print("Extracting training embeddings...")
         start = time.time() #
-        self.train_embeddings = extract_embeddings(
+        self.train_embeddings = log_resource_usage(
+            "Usage for Extract Train Embeddings (Perform)", extract_embeddings, 
             train_and_val_dataset['data_train'], self.interpreter)
         end = time.time() #
-        print(f"Time to extract training embeddings (Perform): {end - start:.2f} seconds") #
+        print(f"[RUNTIME] Time for Extract Train Embeddings (Perform): {end - start:.2f} seconds") #
         self.train_labels = train_and_val_dataset['labels_train']
 
-        # Printing resource usage for Training Embeddings (Perform)
-        log_resource_usage("Usage for Training Embeddings (Perform)")
+        ##########################################################################################
         
         # Validation embeddings
         print("Extracting validation embeddings...")
         start = time.time() #
-        self.val_embeddings = extract_embeddings(
+        self.val_embeddings = log_resource_usage(
+            "Usage for Extract Validation Embeddings (Perform)", extract_embeddings,
             train_and_val_dataset['data_val'], self.interpreter)
         end = time.time() #
-        print(f"Time to extract validation embeddings (perform): {end - start:.2f} seconds") #
+        print(f"[RUNTIME] Time for Extract Validation Embeddings (Perform): {end - start:.2f} seconds") #
         self.val_labels = train_and_val_dataset['labels_val']
 
-        # Printing resource usage for Validation Embeddings (Perform)
-        log_resource_usage("Usage for Validation Embeddings (Perform)")
         ##########################################################################################
 
         # Prepare dataset for training
@@ -230,17 +271,12 @@ class FederatedClient(fl.client.NumPyClient):
         ##########################################################################################
         # Train the head (only the head parameters are updated)
         start = time.time() #
-        self.head.train_with_sgd(
-            self.dataset, 
-            num_iter, 
-            learning_rate, 
-            batch_size=batch_size
-        )
+        log_resource_usage(
+            "Usage for Train Classification Head", self.head.train_with_sgd,
+            self.dataset, num_iter, learning_rate, batch_size=batch_size)
         end = time.time() #
-        print(f"Time to train classification head: {end - start:.2f} seconds") #
+        print(f"[RUNTIME] Time for  Train Classification Head: {end - start:.2f} seconds") #
 
-        # Printing resource usage for Training Classification Head
-        log_resource_usage("Usage for Training Classification Head")
         ##########################################################################################
 
         # Return updated parameters and training metrics
