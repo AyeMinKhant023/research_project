@@ -272,7 +272,7 @@ class FederatedClient(fl.client.NumPyClient):
                 print("Loaded TensorFlow SavedModel")
             except Exception as e:
                 print(f"Error loading SavedModel: {e}")
-                raise
+                raise 
         end = time.time() #
         print(f"Time to load model: {end - start:.2f} seconds") #
     
