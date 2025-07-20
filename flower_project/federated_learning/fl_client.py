@@ -2,10 +2,10 @@ import flwr as fl
 import numpy as np
 import os
 import time
+import psutil
 from PIL import Image
 from pycoral.adapters import classify
 from pycoral.adapters import common
-# from pycoral.utils.edgetpu import make_interpreter
 from softmax_regression import SoftmaxRegression
 import contextlib
 from typing import Dict, List, Tuple, Optional
@@ -65,6 +65,18 @@ def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1):
     
     return train_and_val_dataset, test_dataset
 
+# Function to measure CPU and RAM usage
+def log_resource_usage(step_name):
+    process = psutil.Process(os.getpid())
+    cpu_percent = psutil.cpu_percent(interval=None, percpu=True)  # CPU usage per core
+    mem_info = process.memory_info()
+    mem_usage_mb = mem_info.rss / (1024 * 1024)  # RAM usage in MB
+
+    print(f"[RESOURCE] {step_name}")
+    print(f"  RAM Usage: {mem_usage_mb:.2f} MB")
+    print(f"  CPU Usage Per Core: {cpu_percent}")
+
+
 ##########################################################################################
 ## With Edge TPU Interpreter #
 def extract_embeddings(image_paths, interpreter):
@@ -110,7 +122,7 @@ class FederatedClient(fl.client.NumPyClient):
         ##########################################################################################
         # Initialize the backbone (embedding extractor) - this stays frozen
 
-        ## For Edge TPU Interpreter #
+        # For Edge TPU Interpreter #
         from pycoral.utils.edgetpu import make_interpreter
         start = time.time() #
         self.interpreter = make_interpreter(embedding_extractor_path, device=':0')
@@ -125,6 +137,9 @@ class FederatedClient(fl.client.NumPyClient):
         # self.interpreter.allocate_tensors()
         # end = time.time() #
         # print(f"Time to load model (TFLite Interpreter): {end - start:.2f} seconds") #
+
+        # Printing resource usage for Load Feature Extractor
+        log_resource_usage("Usage for Load Feature Extractor")
         ##########################################################################################
 
         # Load and preprocess data
@@ -151,6 +166,7 @@ class FederatedClient(fl.client.NumPyClient):
         image_paths, labels, label_map = get_image_paths(self.data_dir)
         train_and_val_dataset, test_dataset = shuffle_and_split(image_paths, labels)
         
+        ##########################################################################################
         # Extract embeddings using the backbone (frozen feature extractor)
         # Training embeddings
         print("Extracting training embeddings...")
@@ -158,8 +174,11 @@ class FederatedClient(fl.client.NumPyClient):
         self.train_embeddings = extract_embeddings(
             train_and_val_dataset['data_train'], self.interpreter)
         end = time.time() #
-        print(f"Time to extract training embeddings (perform): {end - start:.2f} seconds") #
+        print(f"Time to extract training embeddings (Perform): {end - start:.2f} seconds") #
         self.train_labels = train_and_val_dataset['labels_train']
+
+        # Printing resource usage for Training Embeddings (Perform)
+        log_resource_usage("Usage for Training Embeddings (Perform)")
         
         # Validation embeddings
         print("Extracting validation embeddings...")
@@ -169,7 +188,11 @@ class FederatedClient(fl.client.NumPyClient):
         end = time.time() #
         print(f"Time to extract validation embeddings (perform): {end - start:.2f} seconds") #
         self.val_labels = train_and_val_dataset['labels_val']
-        
+
+        # Printing resource usage for Validation Embeddings (Perform)
+        log_resource_usage("Usage for Validation Embeddings (Perform)")
+        ##########################################################################################
+
         # Prepare dataset for training
         self.dataset = {
             'data_train': self.train_embeddings,
@@ -204,6 +227,7 @@ class FederatedClient(fl.client.NumPyClient):
         
         print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
         
+        ##########################################################################################
         # Train the head (only the head parameters are updated)
         start = time.time() #
         self.head.train_with_sgd(
@@ -214,6 +238,10 @@ class FederatedClient(fl.client.NumPyClient):
         )
         end = time.time() #
         print(f"Time to train classification head: {end - start:.2f} seconds") #
+
+        # Printing resource usage for Training Classification Head
+        log_resource_usage("Usage for Training Classification Head")
+        ##########################################################################################
 
         # Return updated parameters and training metrics
         return self.get_parameters(config), len(self.train_embeddings), {}
