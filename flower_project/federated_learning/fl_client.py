@@ -175,10 +175,13 @@ class FederatedClient(fl.client.NumPyClient):
         ##########################################################################################
 
         ## With tflite Interpreter #
+        def load_tflite_interpreter(model_path):
+            import tensorflow as tf
+            start = time.time()
+            self.interpreter = tf.lite.Interpreter(model_path=embedding_extractor_path)
+        # self.interpreter.allocate_tensors()
         # import tensorflow as tf
         # start = time.time() #
-        # self.interpreter = tf.lite.Interpreter(model_path=embedding_extractor_path)
-        # self.interpreter.allocate_tensors()
         # end = time.time() #
         # print(f"Time to load model (TFLite Interpreter): {end - start:.2f} seconds") #
 
