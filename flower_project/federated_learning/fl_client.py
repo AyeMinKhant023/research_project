@@ -111,39 +111,39 @@ def log_resource_usage(label, func, *args, **kwargs):
 
 
 ##########################################################################################
-## With Edge TPU Interpreter #
-def extract_embeddings(image_paths, interpreter):
-    """Uses model to process images as embeddings."""
-    input_size = common.input_size(interpreter)
-    feature_dim = classify.num_classes(interpreter)
-    embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-    
-    for idx, path in enumerate(image_paths): 
-        with test_image(path) as img:
-            common.set_input(interpreter, img.resize(input_size, Image.NEAREST))
-            interpreter.invoke()
-            embeddings[idx, :] = classify.get_scores(interpreter)
-
-    return embeddings
-
-## With tflite Interpreter #
+# # With Edge TPU Interpreter #
 # def extract_embeddings(image_paths, interpreter):
-#     input_details = interpreter.get_input_details()
-#     output_details = interpreter.get_output_details()
-#     input_shape = input_details[0]['shape']
-#     input_size = (input_shape[2], input_shape[1])  # width, height
-#     feature_dim = output_details[0]['shape'][-1]
+#     """Uses model to process images as embeddings."""
+#     input_size = common.input_size(interpreter)
+#     feature_dim = classify.num_classes(interpreter)
 #     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-#     for idx, path in enumerate(image_paths):
+    
+#     for idx, path in enumerate(image_paths): 
 #         with test_image(path) as img:
-#             img_resized = img.resize(input_size, Image.NEAREST)
-#             img_array = np.array(img_resized).astype(np.uint8)
-#             img_array = np.expand_dims(img_array, axis=0)
-#             interpreter.set_tensor(input_details[0]['index'], img_array)
+#             common.set_input(interpreter, img.resize(input_size, Image.NEAREST))
 #             interpreter.invoke()
-#             output = interpreter.get_tensor(output_details[0]['index'])
-#             embeddings[idx, :] = output.squeeze()
+#             embeddings[idx, :] = classify.get_scores(interpreter)
+
 #     return embeddings
+
+# With tflite Interpreter #
+def extract_embeddings(image_paths, interpreter):
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+    input_shape = input_details[0]['shape']
+    input_size = (input_shape[2], input_shape[1])  # width, height
+    feature_dim = output_details[0]['shape'][-1]
+    embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
+    for idx, path in enumerate(image_paths):
+        with test_image(path) as img:
+            img_resized = img.resize(input_size, Image.NEAREST)
+            img_array = np.array(img_resized).astype(np.uint8)
+            img_array = np.expand_dims(img_array, axis=0)
+            interpreter.set_tensor(input_details[0]['index'], img_array)
+            interpreter.invoke()
+            output = interpreter.get_tensor(output_details[0]['index'])
+            embeddings[idx, :] = output.squeeze()
+    return embeddings
 ##########################################################################################
 
 class FederatedClient(fl.client.NumPyClient):
@@ -155,35 +155,37 @@ class FederatedClient(fl.client.NumPyClient):
         ##########################################################################################
         # Initialize the backbone (embedding extractor) - this stays frozen
 
-        # For Edge TPU Interpreter #
-        from pycoral.utils.edgetpu import make_interpreter
+        # # For Edge TPU Interpreter #
+        # from pycoral.utils.edgetpu import make_interpreter
+        # start = time.time() #
 
-        start = time.time() #
+        # def load_interpreter(model_path):
+        #     interpreter = make_interpreter(model_path, device=':0')
+        #     interpreter.allocate_tensors()
+        #     return interpreter
 
-        def load_interpreter(model_path):
-            start = time.time() #
-            interpreter = make_interpreter(model_path, device=':0')
-            interpreter.allocate_tensors()
-            return interpreter
+        # self.interpreter = log_resource_usage(
+        #     "Usage for Load Feature Extractor (EdgeTPU Interpreter)", load_interpreter, embedding_extractor_path)
 
-        self.interpreter = log_resource_usage(
-            "Usage for Load Feature Extractor (EdgeTPU Interpreter)", load_interpreter, embedding_extractor_path)
-
-        end = time.time() #
-        print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.2f} seconds") #
+        # end = time.time() #
+        # print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.2f} seconds") #
 
         ##########################################################################################
 
         ## With tflite Interpreter #
+        import tensorflow as tf
+        start = time.time() #
+
         def load_tflite_interpreter(model_path):
-            import tensorflow as tf
-            start = time.time()
-            self.interpreter = tf.lite.Interpreter(model_path=embedding_extractor_path)
-        # self.interpreter.allocate_tensors()
-        # import tensorflow as tf
-        # start = time.time() #
-        # end = time.time() #
-        # print(f"Time to load model (TFLite Interpreter): {end - start:.2f} seconds") #
+            interpreter = tf.lite.Interpreter(model_path=model_path)
+            interpreter.allocate_tensors()
+            return interpreter
+        
+        self.interpreter = log_resource_usage(
+            "Usage for Load Feature Extractor (TFLite Interpreter)", load_tflite_interpreter, embedding_extractor_path)
+        
+        end = time.time() #
+        print(f"[RUNTIME] Time for Load Feature Extractor (TFLite Interpreter): {end - start:.2f} seconds") #
 
         ##########################################################################################
 
