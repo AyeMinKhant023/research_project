@@ -85,12 +85,14 @@ def log_resource_usage(label, func, *args, **kwargs):
 
     stop_event = threading.Event()
     monitor_thread = threading.Thread(target=monitor_cpu)
+    monitor_thread.start()
 
     tracemalloc.start() # Memory measurement with tracemalloc # start
     mem_before = process.memory_info().rss # Memory measurement with psutil # before
 
     start_time = time.time()
     result = func(*args, **kwargs)
+    mem_now = process.memory_info().rss # Memory measurement with psutil # now
     end_time = time.time()
 
     stop_event.set()
@@ -104,11 +106,13 @@ def log_resource_usage(label, func, *args, **kwargs):
     avg_cpu_per_core = [sum(core)/len(core) for core in cpu_array]
     ram_usage_tracemalloc = peak / (1024 * 1024) # in MB
     ram_usage_psutil = (mem_after - mem_before) / (1024 * 1024)  # in MB
+    ram_usage_psutil_absolute = mem_now / (1024 * 1024)  # in MB
 
     print(f"\n[RESOURCE] Usage for {label}")
     print(f"  Time: {end_time - start_time:.2f} sec")
     print(f"  Peak RAM Usage (tracemalloc): {ram_usage_tracemalloc:.2f} MB")
     print(f"  Peak RAM Usage (psutil): {ram_usage_psutil:.2f} MB")
+    print(f"  Absolute Peak RAM Usage (psutil): {ram_usage_psutil_absolute:.2f} MB")
     print(f"  Avg CPU Usage Per Core: {[round(c, 1) for c in avg_cpu_per_core]}")
     
     return result
