@@ -9,6 +9,7 @@ from pycoral.adapters import common
 from softmax_regression import SoftmaxRegression
 import contextlib
 from typing import Dict, List, Tuple, Optional
+from memory_profiler import profile
 
 
 @contextlib.contextmanager
@@ -85,8 +86,8 @@ def log_resource_usage(label, func, *args, **kwargs):
     stop_event = threading.Event()
     monitor_thread = threading.Thread(target=monitor_cpu)
 
-    tracemalloc.start()
-    monitor_thread.start()
+    tracemalloc.start() # Memory measurement with tracemalloc # start
+    mem_before = process.memory_info().rss # Memory measurement with psutil # before
 
     start_time = time.time()
     result = func(*args, **kwargs)
@@ -94,17 +95,20 @@ def log_resource_usage(label, func, *args, **kwargs):
 
     stop_event.set()
     monitor_thread.join()
+    mem_after = process.memory_info().rss # Memory measurement with psutil # after
     current, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop()
+    tracemalloc.stop() # Memory measurement with tracemalloc # stop
 
     # Calculate average CPU per core
     cpu_array = list(zip(*cpu_percentages))  # transpose
     avg_cpu_per_core = [sum(core)/len(core) for core in cpu_array]
-    ram_usage_mb = peak / (1024 * 1024)
+    ram_usage_tracemalloc = peak / (1024 * 1024) # in MB
+    ram_usage_psutil = (mem_after - mem_before) / (1024 * 1024)  # in MB
 
     print(f"\n[RESOURCE] Usage for {label}")
     print(f"  Time: {end_time - start_time:.2f} sec")
-    print(f"  Peak RAM Usage: {ram_usage_mb:.2f} MB")
+    print(f"  Peak RAM Usage (tracemalloc): {ram_usage_tracemalloc:.2f} MB")
+    print(f"  Peak RAM Usage (psutil): {ram_usage_psutil:.2f} MB")
     print(f"  Avg CPU Usage Per Core: {[round(c, 1) for c in avg_cpu_per_core]}")
     
     return result
@@ -207,6 +211,7 @@ class FederatedClient(fl.client.NumPyClient):
         print(f"- Training samples: {len(self.train_embeddings)}")
         print(f"- Validation samples: {len(self.val_embeddings)}")
     
+    @profile
     def load_data(self):
         """Load and preprocess local data."""
         print("Loading local data...")
