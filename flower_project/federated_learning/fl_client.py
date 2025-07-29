@@ -185,7 +185,7 @@ class FederatedClient(fl.client.NumPyClient):
         start = time.time() #
 
         def load_tflite_interpreter(model_path):
-            interpreter = tf.lite.Interpreter(model_path=model_path)
+            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=4)  # The place to change threads
             interpreter.allocate_tensors()
             return interpreter
         
@@ -268,6 +268,7 @@ class FederatedClient(fl.client.NumPyClient):
         self.head.W = W_flat.reshape(self.feature_dim, self.num_classes)
         self.head.b = b_flat.reshape(self.num_classes)
     
+    @profile
     def fit(self, parameters, config):
         """Train the head locally using local data."""
         # Set parameters from server
