@@ -312,6 +312,7 @@ class FederatedClient(fl.client.NumPyClient):
 
 
 def main():
+    global_start_time = time.time()
     import argparse
     
     parser = argparse.ArgumentParser()
@@ -340,6 +341,13 @@ def main():
         client=client
     )
 
+    global_end_time = time.time()
+    total_runtime = global_end_time - global_start_time
+    print(f"[RUNTIME] Total Runtime (Full Client Run): {total_runtime:.2f} seconds")
+
+    # Append it to the power log file
+    with open("mydata.txt", "a") as f:
+        f.write(f"#runtime {int(global_end_time)} {total_runtime:.2f}\n")
 
 if __name__ == "__main__":
     main()
