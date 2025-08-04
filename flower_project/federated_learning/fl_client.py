@@ -83,7 +83,7 @@ def log_resource_usage(label, func, *args, **kwargs):
     #         cpu_percentages.append(cpu)
     #         time.sleep(0.1)  # sample every 100ms
 
-    # stop_event = threading.Event()
+    stop_event = threading.Event()
     # monitor_thread = threading.Thread(target=monitor_cpu)
     # monitor_thread.start()
 
@@ -110,10 +110,10 @@ def log_resource_usage(label, func, *args, **kwargs):
 
     print(f"\n[RESOURCE] Usage for {label}")
     print(f"  Time: {end_time - start_time:.2f} sec")
-    print(f"  Peak RAM Usage (tracemalloc): {ram_usage_tracemalloc:.2f} MB")
+    # print(f"  Peak RAM Usage (tracemalloc): {ram_usage_tracemalloc:.2f} MB")
     print(f"  Peak RAM Usage (psutil): {ram_usage_psutil:.2f} MB")
     print(f"  Absolute Peak RAM Usage (psutil): {ram_usage_psutil_absolute:.2f} MB")
-    print(f"  Avg CPU Usage Per Core: {[round(c, 1) for c in avg_cpu_per_core]}")
+    # print(f"  Avg CPU Usage Per Core: {[round(c, 1) for c in avg_cpu_per_core]}")
     
     return result
 
@@ -185,7 +185,7 @@ class FederatedClient(fl.client.NumPyClient):
         start = time.time() #
 
         def load_tflite_interpreter(model_path):
-            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=4)  # The place to change threads
+            interpreter = tf.lite.Interpreter(model_path=model_path)  # The place to change threads: num_threads=1
             interpreter.allocate_tensors()
             return interpreter
         
