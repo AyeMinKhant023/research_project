@@ -77,17 +77,17 @@ def log_resource_usage(label, func, *args, **kwargs):
     cpu_percentages = []
 
     # Monitor CPU in background
-    def monitor_cpu():
-        while not stop_event.is_set():
-            cpu = psutil.cpu_percent(percpu=True)
-            cpu_percentages.append(cpu)
-            time.sleep(0.1)  # sample every 100ms
+    # def monitor_cpu():
+    #     while not stop_event.is_set():
+    #         cpu = psutil.cpu_percent(percpu=True)
+    #         cpu_percentages.append(cpu)
+    #         time.sleep(0.1)  # sample every 100ms
 
-    stop_event = threading.Event()
-    monitor_thread = threading.Thread(target=monitor_cpu)
-    monitor_thread.start()
+    # stop_event = threading.Event()
+    # monitor_thread = threading.Thread(target=monitor_cpu)
+    # monitor_thread.start()
 
-    tracemalloc.start() # Memory measurement with tracemalloc # start
+    # tracemalloc.start() # Memory measurement with tracemalloc # start
     mem_before = process.memory_info().rss # Memory measurement with psutil # before
 
     start_time = time.time()
@@ -96,15 +96,15 @@ def log_resource_usage(label, func, *args, **kwargs):
     end_time = time.time()
 
     stop_event.set()
-    monitor_thread.join()
+    # monitor_thread.join()
     mem_after = process.memory_info().rss # Memory measurement with psutil # after
-    current, peak = tracemalloc.get_traced_memory()
-    tracemalloc.stop() # Memory measurement with tracemalloc # stop
+    # current, peak = tracemalloc.get_traced_memory()
+    # tracemalloc.stop() # Memory measurement with tracemalloc # stop
 
     # Calculate average CPU per core
-    cpu_array = list(zip(*cpu_percentages))  # transpose
-    avg_cpu_per_core = [sum(core)/len(core) for core in cpu_array]
-    ram_usage_tracemalloc = peak / (1024 * 1024) # in MB
+    # cpu_array = list(zip(*cpu_percentages))  # transpose
+    # avg_cpu_per_core = [sum(core)/len(core) for core in cpu_array]
+    # ram_usage_tracemalloc = peak / (1024 * 1024) # in MB
     ram_usage_psutil = (mem_after - mem_before) / (1024 * 1024)  # in MB
     ram_usage_psutil_absolute = mem_now / (1024 * 1024)  # in MB
 
@@ -185,7 +185,7 @@ class FederatedClient(fl.client.NumPyClient):
         start = time.time() #
 
         def load_tflite_interpreter(model_path):
-            interpreter = tf.lite.Interpreter(model_path=model_path)  # The place to change threads
+            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=4)  # The place to change threads
             interpreter.allocate_tensors()
             return interpreter
         
