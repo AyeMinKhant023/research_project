@@ -11,6 +11,28 @@ import contextlib
 from typing import Dict, List, Tuple, Optional
 from memory_profiler import profile
 
+def log_phase_marker(phase_name, timestamp=None):
+    """Log phase markers to the power data file"""
+    import os
+    import time
+
+    if timestamp is None:
+        timestamp = time.time()
+
+    # Path to phases.txt in the target folder
+    base_dir = os.path.dirname(__file__)  # directory of fl_client.py
+    phase_file_path = os.path.join(base_dir, "..", "fnirsi-usb-power-data-logger", "phases.txt")
+    phase_file_path = os.path.abspath(phase_file_path)  # make it absolute
+
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(phase_file_path), exist_ok=True)
+
+    # Append to the file
+    with open(phase_file_path, "a") as f:
+        f.write(f"#phase {int(timestamp)} {phase_name}\n")
+
+    print(f"[PHASE MARKER] {phase_name} at timestamp {int(timestamp)} (saved to {phase_file_path})")
+
 
 @contextlib.contextmanager
 def test_image(path):
@@ -160,6 +182,9 @@ class FederatedClient(fl.client.NumPyClient):
         self.data_dir = data_dir
         self.num_classes = num_classes
 
+        # Log start of model loading
+        log_phase_marker("START_LOAD_MODEL")
+
         ##########################################################################################
         # Initialize the backbone (embedding extractor) - this stays frozen
 
@@ -197,6 +222,9 @@ class FederatedClient(fl.client.NumPyClient):
 
         ##########################################################################################
 
+        # Log end of model loading
+        log_phase_marker("END_LOAD_MODEL")
+
         # Load and preprocess data
         self.load_data()
         
@@ -221,6 +249,9 @@ class FederatedClient(fl.client.NumPyClient):
         print("Loading local data...")
         image_paths, labels, label_map = get_image_paths(self.data_dir)
         train_and_val_dataset, test_dataset = shuffle_and_split(image_paths, labels)
+
+        # Log start of feature extraction
+        log_phase_marker("START_EXTRACT_FEATURES")
         
         ##########################################################################################
         # Extract embeddings using the backbone (frozen feature extractor)
@@ -247,6 +278,9 @@ class FederatedClient(fl.client.NumPyClient):
         self.val_labels = train_and_val_dataset['labels_val']
 
         ##########################################################################################
+
+        # Log end of feature extraction
+        log_phase_marker("END_EXTRACT_FEATURES")
 
         # Prepare dataset for training
         self.dataset = {
@@ -280,8 +314,10 @@ class FederatedClient(fl.client.NumPyClient):
         num_iter = 23 #config.get("num_iter", 2)  # Reduced for federated settingß
 
         print(f"NUM ITER={num_iter}")
-        
         print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
+
+        # Log start of head training
+        log_phase_marker("START_TRAIN_HEAD")
         
         ##########################################################################################
         # Train the head (only the head parameters are updated)
@@ -293,6 +329,9 @@ class FederatedClient(fl.client.NumPyClient):
         print(f"[RUNTIME] Time for  Train Classification Head: {end - start:.2f} seconds") #
 
         ##########################################################################################
+
+        # Log end of head training
+        log_phase_marker("END_TRAIN_HEAD")
 
         # Return updated parameters and training metrics
         return self.get_parameters(config), len(self.train_embeddings), {}
@@ -313,6 +352,10 @@ class FederatedClient(fl.client.NumPyClient):
 
 def main():
     global_start_time = time.time()
+
+    # Log overall start
+    log_phase_marker("START_FL_CLIENT")
+
     import argparse
     
     parser = argparse.ArgumentParser()
@@ -333,6 +376,9 @@ def main():
         args.data_dir, 
         args.num_classes
     )
+
+    # Log start of federated learning
+    log_phase_marker("START_FEDERATED_LEARNING")
     
     # Start federated learning
     print(f"Starting federated learning client, connecting to {args.server_address}")
@@ -342,6 +388,10 @@ def main():
     )
 
     global_end_time = time.time()
+
+    # Log end
+    log_phase_marker("END_FL_CLIENT")
+
     total_runtime = global_end_time - global_start_time
     print(f"[RUNTIME] Total Runtime (Full Client Run): {total_runtime:.2f} seconds")
 
