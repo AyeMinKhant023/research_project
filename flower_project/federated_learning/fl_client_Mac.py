@@ -297,19 +297,19 @@ class FederatedClient(fl.client.NumPyClient):
         
         self.train_labels = train_and_val_dataset['labels_train']
         
-        # Validation embeddings
-        start = time.time() #
-        print("Extracting validation embeddings...")
-        if self.model_type == 'tflite':
-            self.val_embeddings = extract_embeddings_tflite(
-                train_and_val_dataset['data_val'], self.interpreter, self.input_size)
-        else:
-            self.val_embeddings = extract_embeddings_saved_model(
-                train_and_val_dataset['data_val'], self.model, self.input_size)
-        end = time.time() #
-        print(f"Time to extract validation embeddings (perform): {end - start:.2f} seconds") #
+        # # Validation embeddings
+        # start = time.time() #
+        # print("Extracting validation embeddings...")
+        # if self.model_type == 'tflite':
+        #     self.val_embeddings = extract_embeddings_tflite(
+        #         train_and_val_dataset['data_val'], self.interpreter, self.input_size)
+        # else:
+        #     self.val_embeddings = extract_embeddings_saved_model(
+        #         train_and_val_dataset['data_val'], self.model, self.input_size)
+        # end = time.time() #
+        # print(f"Time to extract validation embeddings (perform): {end - start:.2f} seconds") #
         
-        self.val_labels = train_and_val_dataset['labels_val']
+        # self.val_labels = train_and_val_dataset['labels_val']
 
         
         # Prepare dataset for training

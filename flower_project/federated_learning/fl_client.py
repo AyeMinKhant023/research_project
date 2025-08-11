@@ -205,7 +205,7 @@ class FederatedClient(fl.client.NumPyClient):
 
         ##########################################################################################
 
-        ## With tflite Interpreter #
+        # With tflite Interpreter #
         import tensorflow as tf
         start = time.time() #
 
@@ -267,15 +267,15 @@ class FederatedClient(fl.client.NumPyClient):
 
         ##########################################################################################
         
-        # Validation embeddings
-        print("Extracting validation embeddings...")
-        start = time.time() #
-        self.val_embeddings = log_resource_usage(
-            "Usage for Extract Validation Embeddings (Perform)", extract_embeddings,
-            train_and_val_dataset['data_val'], self.interpreter)
-        end = time.time() #
-        print(f"[RUNTIME] Time for Extract Validation Embeddings (Perform): {end - start:.2f} seconds") #
-        self.val_labels = train_and_val_dataset['labels_val']
+        # # Validation embeddings
+        # print("Extracting validation embeddings...")
+        # start = time.time() #
+        # self.val_embeddings = log_resource_usage(
+        #     "Usage for Extract Validation Embeddings (Perform)", extract_embeddings,
+        #     train_and_val_dataset['data_val'], self.interpreter)
+        # end = time.time() #
+        # print(f"[RUNTIME] Time for Extract Validation Embeddings (Perform): {end - start:.2f} seconds") #
+        # self.val_labels = train_and_val_dataset['labels_val']
 
         ##########################################################################################
 
@@ -310,7 +310,8 @@ class FederatedClient(fl.client.NumPyClient):
         
         # Local training parameters
         learning_rate = config.get("learning_rate", 1e-2)
-        batch_size = config.get("batch_size", 64)
+        batch_size = 200
+        # batch_size = config.get("batch_size", 64)
         num_iter = 23 #config.get("num_iter", 2)  # Reduced for federated settingß
 
         print(f"NUM ITER={num_iter}")
