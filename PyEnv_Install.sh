@@ -10,7 +10,9 @@ echo 'eval "$(pyenv init -)"' >> ~/.bashrc
 source ~/.bashrc
 
 sudo apt install -y zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev curl \
-libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev libjpeg-dev
+libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev \ 
+libjpeg-dev libatlas-base-dev libopenblas-dev
+# OAK added line 14, double-check if they are needed
 
 pyenv install -v 3.9.16
 pyenv global 3.9.16
