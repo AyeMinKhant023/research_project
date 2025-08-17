@@ -156,23 +156,73 @@ def log_resource_usage(label, func, *args, **kwargs):
 
 #     return embeddings
 
-# With tflite Interpreter #
+##########################################################################################
+
+# # With tflite Interpreter #
+# def extract_embeddings(image_paths, interpreter):
+#     input_details = interpreter.get_input_details()
+#     output_details = interpreter.get_output_details()
+#     input_shape = input_details[0]['shape']
+#     input_size = (input_shape[2], input_shape[1])  # width, height
+#     feature_dim = output_details[0]['shape'][-1]
+#     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
+#     for idx, path in enumerate(image_paths):
+#         with test_image(path) as img:
+#             img_resized = img.resize(input_size, Image.NEAREST)
+#             img_array = np.array(img_resized).astype(np.uint8)
+#             img_array = np.expand_dims(img_array, axis=0)
+#             interpreter.set_tensor(input_details[0]['index'], img_array)
+#             interpreter.invoke()
+#             output = interpreter.get_tensor(output_details[0]['index'])
+#             embeddings[idx, :] = output.squeeze()
+#     return embeddings
+##########################################################################################
+
+# For ResNet
+
+# Replace the extract_embeddings function in your fl_client.py with this:
+
 def extract_embeddings(image_paths, interpreter):
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
     input_shape = input_details[0]['shape']
     input_size = (input_shape[2], input_shape[1])  # width, height
     feature_dim = output_details[0]['shape'][-1]
+    
+    # Check the expected input data type
+    input_dtype = input_details[0]['dtype']
+    print(f"Model expects input type: {input_dtype}")
+    
     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
+    
     for idx, path in enumerate(image_paths):
         with test_image(path) as img:
             img_resized = img.resize(input_size, Image.NEAREST)
-            img_array = np.array(img_resized).astype(np.uint8)
+            img_array = np.array(img_resized)
+            
+            # Handle different input types
+            if input_dtype == np.float32:
+                # For models expecting float32 (like ResNet)
+                img_array = img_array.astype(np.float32) / 255.0  # Normalize to 0-1
+                # Apply ImageNet normalization for ResNet (ensure float32)
+                mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+                std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+                img_array = (img_array - mean) / std
+                img_array = img_array.astype(np.float32)  # Ensure float32
+            elif input_dtype == np.uint8:
+                # For quantized models expecting uint8 (like your old MobileNet)
+                img_array = img_array.astype(np.uint8)
+            else:
+                # Fallback: try float32 normalized
+                img_array = img_array.astype(np.float32) / 255.0
+            
             img_array = np.expand_dims(img_array, axis=0)
+            
             interpreter.set_tensor(input_details[0]['index'], img_array)
             interpreter.invoke()
             output = interpreter.get_tensor(output_details[0]['index'])
             embeddings[idx, :] = output.squeeze()
+    
     return embeddings
 ##########################################################################################
 
@@ -267,15 +317,15 @@ class FederatedClient(fl.client.NumPyClient):
 
         ##########################################################################################
         
-        # # Validation embeddings
-        # print("Extracting validation embeddings...")
-        # start = time.time() #
-        # self.val_embeddings = log_resource_usage(
-        #     "Usage for Extract Validation Embeddings (Perform)", extract_embeddings,
-        #     train_and_val_dataset['data_val'], self.interpreter)
-        # end = time.time() #
-        # print(f"[RUNTIME] Time for Extract Validation Embeddings (Perform): {end - start:.2f} seconds") #
-        # self.val_labels = train_and_val_dataset['labels_val']
+        # Validation embeddings
+        print("Extracting validation embeddings...")
+        start = time.time() #
+        self.val_embeddings = log_resource_usage(
+            "Usage for Extract Validation Embeddings (Perform)", extract_embeddings,
+            train_and_val_dataset['data_val'], self.interpreter)
+        end = time.time() #
+        print(f"[RUNTIME] Time for Extract Validation Embeddings (Perform): {end - start:.2f} seconds") #
+        self.val_labels = train_and_val_dataset['labels_val']
 
         ##########################################################################################
 
