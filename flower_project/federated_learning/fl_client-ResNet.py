@@ -4,8 +4,9 @@ import os
 import time
 import psutil
 from PIL import Image
-from pycoral.adapters import classify
-from pycoral.adapters import common
+import tensorflow as tf
+from tensorflow.keras.applications import ResNet50
+from tensorflow.keras.applications.resnet50 import preprocess_input
 from softmax_regression import SoftmaxRegression
 import contextlib
 from typing import Dict, List, Tuple, Optional
@@ -98,18 +99,8 @@ def log_resource_usage(label, func, *args, **kwargs):
     process = psutil.Process()
     cpu_percentages = []
 
-    # Monitor CPU in background
-    # def monitor_cpu():
-    #     while not stop_event.is_set():
-    #         cpu = psutil.cpu_percent(percpu=True)
-    #         cpu_percentages.append(cpu)
-    #         time.sleep(0.1)  # sample every 100ms
-
     stop_event = threading.Event()
-    # monitor_thread = threading.Thread(target=monitor_cpu)
-    # monitor_thread.start()
 
-    # tracemalloc.start() # Memory measurement with tracemalloc # start
     mem_before = process.memory_info().rss # Memory measurement with psutil # before
 
     start_time = time.time()
@@ -118,107 +109,102 @@ def log_resource_usage(label, func, *args, **kwargs):
     end_time = time.time()
 
     stop_event.set()
-    # monitor_thread.join()
     mem_after = process.memory_info().rss # Memory measurement with psutil # after
-    # current, peak = tracemalloc.get_traced_memory()
-    # tracemalloc.stop() # Memory measurement with tracemalloc # stop
 
-    # Calculate average CPU per core
-    # cpu_array = list(zip(*cpu_percentages))  # transpose
-    # avg_cpu_per_core = [sum(core)/len(core) for core in cpu_array]
-    # ram_usage_tracemalloc = peak / (1024 * 1024) # in MB
     ram_usage_psutil = (mem_after - mem_before) / (1024 * 1024)  # in MB
     ram_usage_psutil_absolute = mem_now / (1024 * 1024)  # in MB
 
     print(f"\n[RESOURCE] Usage for {label}")
     print(f"  Time: {end_time - start_time:.2f} sec")
-    # print(f"  Peak RAM Usage (tracemalloc): {ram_usage_tracemalloc:.2f} MB")
     print(f"  Peak RAM Usage (psutil): {ram_usage_psutil:.2f} MB")
     print(f"  Absolute Peak RAM Usage (psutil): {ram_usage_psutil_absolute:.2f} MB")
-    # print(f"  Avg CPU Usage Per Core: {[round(c, 1) for c in avg_cpu_per_core]}")
     
     return result
 
 
 ##########################################################################################
-# # With Edge TPU Interpreter #
-# def extract_embeddings(image_paths, interpreter):
-#     """Uses model to process images as embeddings."""
-#     input_size = common.input_size(interpreter)
-#     feature_dim = classify.num_classes(interpreter)
-#     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-    
-#     for idx, path in enumerate(image_paths): 
-#         with test_image(path) as img:
-#             common.set_input(interpreter, img.resize(input_size, Image.NEAREST))
-#             interpreter.invoke()
-#             embeddings[idx, :] = classify.get_scores(interpreter)
-
-#     return embeddings
-
-# With tflite Interpreter #
-def extract_embeddings(image_paths, interpreter):
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    input_shape = input_details[0]['shape']
-    input_size = (input_shape[2], input_shape[1])  # width, height
-    feature_dim = output_details[0]['shape'][-1]
+# ResNet50 Feature extraction
+def extract_embeddings(image_paths, feature_extractor):
+    """Uses ResNet50 model to process images as embeddings."""
+    input_size = (224, 224)  # ResNet50 standard input size
+    feature_dim = 2048  # ResNet50 with global average pooling outputs 2048 features
     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-    for idx, path in enumerate(image_paths):
-        with test_image(path) as img:
-            img_resized = img.resize(input_size, Image.NEAREST)
-            img_array = np.array(img_resized).astype(np.uint8)
-            img_array = np.expand_dims(img_array, axis=0)
-            interpreter.set_tensor(input_details[0]['index'], img_array)
-            interpreter.invoke()
-            output = interpreter.get_tensor(output_details[0]['index'])
-            embeddings[idx, :] = output.squeeze()
+    
+    # Process images in batches for efficiency (smaller batches for Pi)
+    batch_size = 8  # Reduced batch size for Raspberry Pi
+    
+    for i in range(0, len(image_paths), batch_size):
+        batch_paths = image_paths[i:i+batch_size]
+        batch_images = []
+        
+        # Load and preprocess batch of images
+        for path in batch_paths:
+            with test_image(path) as img:
+                # Resize image to ResNet input size
+                img_resized = img.resize(input_size, Image.LANCZOS)
+                # Convert to RGB if needed
+                if img_resized.mode != 'RGB':
+                    img_resized = img_resized.convert('RGB')
+                # Convert to numpy array
+                img_array = np.array(img_resized).astype(np.float32)
+                batch_images.append(img_array)
+        
+        # Stack into batch and preprocess
+        batch_array = np.stack(batch_images)
+        batch_preprocessed = preprocess_input(batch_array)
+        
+        # Extract features
+        batch_features = feature_extractor.predict(batch_preprocessed, verbose=0)
+        
+        # Store embeddings
+        end_idx = min(i + batch_size, len(image_paths))
+        embeddings[i:end_idx] = batch_features[:end_idx-i]
+        
+        # Print progress
+        print(f"Processed {end_idx}/{len(image_paths)} images")
+    
     return embeddings
 ##########################################################################################
 
 class FederatedClient(fl.client.NumPyClient):
-    def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int):
-        self.embedding_extractor_path = embedding_extractor_path
+    def __init__(self, data_dir: str, num_classes: int, use_gpu: bool = False):
         self.data_dir = data_dir
         self.num_classes = num_classes
+        self.use_gpu = use_gpu
 
+        # Configure GPU/CPU usage - Force CPU for consistent comparison
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Force CPU usage
+        
         # Log start of model loading
         log_phase_marker("START_LOAD_MODEL")
 
         ##########################################################################################
-        # Initialize the backbone (embedding extractor) - this stays frozen
+        # Initialize ResNet50 feature extractor - this stays frozen
+        start = time.time()
 
-        # # For Edge TPU Interpreter #
-        # from pycoral.utils.edgetpu import make_interpreter
-        # start = time.time() #
+        def load_resnet_feature_extractor():
+            """Load ResNet50 and create feature extractor."""
+            base_model = ResNet50(
+                weights='imagenet',
+                include_top=False,  # Remove classification head
+                pooling='avg'       # Global average pooling -> 2048 features
+            )
+            
+            # Freeze all layers (no training)
+            base_model.trainable = False
+            
+            print(f"ResNet50 loaded with {len(base_model.layers)} layers, all frozen")
+            print(f"Feature output shape: {base_model.output_shape}")  # Should be (None, 2048)
+            
+            return base_model
 
-        # def load_interpreter(model_path):
-        #     interpreter = make_interpreter(model_path, device=':0')
-        #     interpreter.allocate_tensors()
-        #     return interpreter
+        self.feature_extractor = log_resource_usage(
+            "Usage for Load ResNet50 Feature Extractor", 
+            load_resnet_feature_extractor
+        )
 
-        # self.interpreter = log_resource_usage(
-        #     "Usage for Load Feature Extractor (EdgeTPU Interpreter)", load_interpreter, embedding_extractor_path)
-
-        # end = time.time() #
-        # print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.2f} seconds") #
-
-        ##########################################################################################
-
-        # With tflite Interpreter #
-        import tensorflow as tf
-        start = time.time() #
-
-        def load_tflite_interpreter(model_path):
-            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=4)  # The place to change threads: num_threads=1
-            interpreter.allocate_tensors()
-            return interpreter
-        
-        self.interpreter = log_resource_usage(
-            "Usage for Load Feature Extractor (TFLite Interpreter)", load_tflite_interpreter, embedding_extractor_path)
-        
-        end = time.time() #
-        print(f"[RUNTIME] Time for Load Feature Extractor (TFLite Interpreter): {end - start:.2f} seconds") #
+        end = time.time()
+        print(f"[RUNTIME] Time for Load ResNet50 Feature Extractor: {end - start:.2f} seconds")
 
         ##########################################################################################
 
@@ -230,6 +216,8 @@ class FederatedClient(fl.client.NumPyClient):
         
         # Initialize head (softmax regression) - this is what gets trained
         self.feature_dim = self.train_embeddings.shape[1]
+        print(f"Actual feature dimension from ResNet50: {self.feature_dim}")
+        
         self.head = SoftmaxRegression(
             self.feature_dim, 
             self.num_classes, 
@@ -238,6 +226,7 @@ class FederatedClient(fl.client.NumPyClient):
         )
         
         print(f"Client initialized with:")
+        print(f"- Model type: ResNet50")
         print(f"- Feature dimension: {self.feature_dim}")
         print(f"- Number of classes: {self.num_classes}")
         print(f"- Training samples: {len(self.train_embeddings)}")
@@ -254,28 +243,34 @@ class FederatedClient(fl.client.NumPyClient):
         log_phase_marker("START_EXTRACT_FEATURES")
         
         ##########################################################################################
-        # Extract embeddings using the backbone (frozen feature extractor)
+        # Extract embeddings using ResNet50 (frozen feature extractor)
         # Training embeddings
-        print("Extracting training embeddings...")
-        start = time.time() #
+        print("Extracting training embeddings with ResNet50...")
+        start = time.time()
         self.train_embeddings = log_resource_usage(
-            "Usage for Extract Train Embeddings (Perform)", extract_embeddings, 
-            train_and_val_dataset['data_train'], self.interpreter)
-        end = time.time() #
-        print(f"[RUNTIME] Time for Extract Train Embeddings (Perform): {end - start:.2f} seconds") #
+            "Usage for Extract Train Embeddings (ResNet50)", 
+            extract_embeddings, 
+            train_and_val_dataset['data_train'], 
+            self.feature_extractor
+        )
+        end = time.time()
+        print(f"[RUNTIME] Time for Extract Train Embeddings (ResNet50): {end - start:.2f} seconds")
         self.train_labels = train_and_val_dataset['labels_train']
 
         ##########################################################################################
         
-        # # Validation embeddings
-        # print("Extracting validation embeddings...")
-        # start = time.time() #
-        # self.val_embeddings = log_resource_usage(
-        #     "Usage for Extract Validation Embeddings (Perform)", extract_embeddings,
-        #     train_and_val_dataset['data_val'], self.interpreter)
-        # end = time.time() #
-        # print(f"[RUNTIME] Time for Extract Validation Embeddings (Perform): {end - start:.2f} seconds") #
-        # self.val_labels = train_and_val_dataset['labels_val']
+        # Validation embeddings  
+        print("Extracting validation embeddings with ResNet50...")
+        start = time.time()
+        self.val_embeddings = log_resource_usage(
+            "Usage for Extract Validation Embeddings (ResNet50)", 
+            extract_embeddings,
+            train_and_val_dataset['data_val'], 
+            self.feature_extractor
+        )
+        end = time.time()
+        print(f"[RUNTIME] Time for Extract Validation Embeddings (ResNet50): {end - start:.2f} seconds")
+        self.val_labels = train_and_val_dataset['labels_val']
 
         ##########################################################################################
 
@@ -311,8 +306,7 @@ class FederatedClient(fl.client.NumPyClient):
         # Local training parameters
         learning_rate = config.get("learning_rate", 1e-2)
         batch_size = 200
-        # batch_size = config.get("batch_size", 64)
-        num_iter = 23 #config.get("num_iter", 2)  # Reduced for federated settingß
+        num_iter = 23
 
         print(f"NUM ITER={num_iter}")
         print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
@@ -322,12 +316,14 @@ class FederatedClient(fl.client.NumPyClient):
         
         ##########################################################################################
         # Train the head (only the head parameters are updated)
-        start = time.time() #
+        start = time.time()
         log_resource_usage(
-            "Usage for Train Classification Head", self.head.train_with_sgd,
-            self.dataset, num_iter, learning_rate, batch_size=batch_size)
-        end = time.time() #
-        print(f"[RUNTIME] Time for  Train Classification Head: {end - start:.2f} seconds") #
+            "Usage for Train Classification Head", 
+            self.head.train_with_sgd,
+            self.dataset, num_iter, learning_rate, batch_size=batch_size
+        )
+        end = time.time()
+        print(f"[RUNTIME] Time for Train Classification Head: {end - start:.2f} seconds")
 
         ##########################################################################################
 
@@ -360,8 +356,6 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--embedding_extractor_path", required=True, 
-                       help="Path to embedding extractor tflite model")
     parser.add_argument("--data_dir", required=True, 
                        help="Directory containing local training data")
     parser.add_argument("--num_classes", type=int, required=True,
@@ -371,9 +365,8 @@ def main():
     
     args = parser.parse_args()
     
-    # Create federated client
+    # Create federated client with ResNet50
     client = FederatedClient(
-        args.embedding_extractor_path, 
         args.data_dir, 
         args.num_classes
     )
@@ -382,7 +375,7 @@ def main():
     log_phase_marker("START_FEDERATED_LEARNING")
     
     # Start federated learning
-    print(f"Starting federated learning client, connecting to {args.server_address}")
+    print(f"Starting federated learning client with ResNet50, connecting to {args.server_address}")
     fl.client.start_numpy_client(
         server_address=args.server_address,
         client=client
