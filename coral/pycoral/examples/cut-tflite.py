@@ -115,10 +115,9 @@ mobilenetv1['model'].summary()
 mobilenetv2['model'].summary()
 inceptionv3['model'].summary()
 resnet50['model'].summary() 
-exit(1)
 
 experiments = [mobilenetv1, mobilenetv2, inceptionv3, resnet50]
-experiments = [inceptionv3]
+experiments = [resnet50]
 output_folder = './out/'
 
 if not os.path.exists(output_folder):

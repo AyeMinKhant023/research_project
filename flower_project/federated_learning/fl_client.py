@@ -27,11 +27,17 @@ def log_phase_marker(phase_name, timestamp=None):
     # Ensure directory exists
     os.makedirs(os.path.dirname(phase_file_path), exist_ok=True)
 
-    # Append to the file
-    with open(phase_file_path, "a") as f:
-        f.write(f"#phase {int(timestamp)} {phase_name}\n")
+    # Check if this is the first phase marker (START_LOAD_MODEL) to overwrite the file
+    if phase_name == "START_LOAD_MODEL":
+        mode = "w"  # Overwrite the file for the first marker
+    else:
+        mode = "a"  # Append for all subsequent markers
 
-    print(f"[PHASE MARKER] {phase_name} at timestamp {int(timestamp)} (saved to {phase_file_path})")
+    # Append to the file
+    with open(phase_file_path, mode) as f:
+        f.write(f"#phase {timestamp:.3f} {phase_name}\n")
+
+    print(f"[PHASE MARKER] {phase_name} at timestamp {timestamp:.3f} (saved to {phase_file_path})")
 
 
 @contextlib.contextmanager
@@ -158,72 +164,72 @@ def log_resource_usage(label, func, *args, **kwargs):
 
 ##########################################################################################
 
-# # With tflite Interpreter #
-# def extract_embeddings(image_paths, interpreter):
-#     input_details = interpreter.get_input_details()
-#     output_details = interpreter.get_output_details()
-#     input_shape = input_details[0]['shape']
-#     input_size = (input_shape[2], input_shape[1])  # width, height
-#     feature_dim = output_details[0]['shape'][-1]
-#     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-#     for idx, path in enumerate(image_paths):
-#         with test_image(path) as img:
-#             img_resized = img.resize(input_size, Image.NEAREST)
-#             img_array = np.array(img_resized).astype(np.uint8)
-#             img_array = np.expand_dims(img_array, axis=0)
-#             interpreter.set_tensor(input_details[0]['index'], img_array)
-#             interpreter.invoke()
-#             output = interpreter.get_tensor(output_details[0]['index'])
-#             embeddings[idx, :] = output.squeeze()
-#     return embeddings
-##########################################################################################
-
-# For ResNet
-
-# Replace the extract_embeddings function in your fl_client.py with this:
-
+# With tflite Interpreter #
 def extract_embeddings(image_paths, interpreter):
     input_details = interpreter.get_input_details()
     output_details = interpreter.get_output_details()
     input_shape = input_details[0]['shape']
     input_size = (input_shape[2], input_shape[1])  # width, height
     feature_dim = output_details[0]['shape'][-1]
-    
-    # Check the expected input data type
-    input_dtype = input_details[0]['dtype']
-    print(f"Model expects input type: {input_dtype}")
-    
     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-    
     for idx, path in enumerate(image_paths):
         with test_image(path) as img:
             img_resized = img.resize(input_size, Image.NEAREST)
-            img_array = np.array(img_resized)
-            
-            # Handle different input types
-            if input_dtype == np.float32:
-                # For models expecting float32 (like ResNet)
-                img_array = img_array.astype(np.float32) / 255.0  # Normalize to 0-1
-                # Apply ImageNet normalization for ResNet (ensure float32)
-                mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
-                std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-                img_array = (img_array - mean) / std
-                img_array = img_array.astype(np.float32)  # Ensure float32
-            elif input_dtype == np.uint8:
-                # For quantized models expecting uint8 (like your old MobileNet)
-                img_array = img_array.astype(np.uint8)
-            else:
-                # Fallback: try float32 normalized
-                img_array = img_array.astype(np.float32) / 255.0
-            
+            img_array = np.array(img_resized).astype(np.uint8)
             img_array = np.expand_dims(img_array, axis=0)
-            
             interpreter.set_tensor(input_details[0]['index'], img_array)
             interpreter.invoke()
             output = interpreter.get_tensor(output_details[0]['index'])
             embeddings[idx, :] = output.squeeze()
-    
     return embeddings
+##########################################################################################
+
+# # For ResNet
+
+# # Replace the extract_embeddings function in your fl_client.py with this:
+
+# def extract_embeddings(image_paths, interpreter):
+#     input_details = interpreter.get_input_details()
+#     output_details = interpreter.get_output_details()
+#     input_shape = input_details[0]['shape']
+#     input_size = (input_shape[2], input_shape[1])  # width, height
+#     feature_dim = output_details[0]['shape'][-1]
+    
+#     # Check the expected input data type
+#     input_dtype = input_details[0]['dtype']
+#     print(f"Model expects input type: {input_dtype}")
+    
+#     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
+    
+#     for idx, path in enumerate(image_paths):
+#         with test_image(path) as img:
+#             img_resized = img.resize(input_size, Image.NEAREST)
+#             img_array = np.array(img_resized)
+            
+#             # Handle different input types
+#             if input_dtype == np.float32:
+#                 # For models expecting float32 (like ResNet)
+#                 img_array = img_array.astype(np.float32) / 255.0  # Normalize to 0-1
+#                 # Apply ImageNet normalization for ResNet (ensure float32)
+#                 mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+#                 std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+#                 img_array = (img_array - mean) / std
+#                 img_array = img_array.astype(np.float32)  # Ensure float32
+#             elif input_dtype == np.uint8:
+#                 # For quantized models expecting uint8 (like your old MobileNet)
+#                 img_array = img_array.astype(np.uint8)
+#             else:
+#                 # Fallback: try float32 normalized
+#                 img_array = img_array.astype(np.float32) / 255.0
+            
+#             img_array = np.expand_dims(img_array, axis=0)
+            
+#             interpreter.set_tensor(input_details[0]['index'], img_array)
+#             interpreter.invoke()
+#             output = interpreter.get_tensor(output_details[0]['index'])
+#             embeddings[idx, :] = output.squeeze()
+    
+#     return embeddings
 ##########################################################################################
 
 class FederatedClient(fl.client.NumPyClient):
@@ -260,7 +266,7 @@ class FederatedClient(fl.client.NumPyClient):
         start = time.time() #
 
         def load_tflite_interpreter(model_path):
-            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=4)  # The place to change threads: num_threads=1
+            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=1)  # The place to change threads: num_threads=1
             interpreter.allocate_tensors()
             return interpreter
         
@@ -291,7 +297,7 @@ class FederatedClient(fl.client.NumPyClient):
         print(f"- Feature dimension: {self.feature_dim}")
         print(f"- Number of classes: {self.num_classes}")
         print(f"- Training samples: {len(self.train_embeddings)}")
-        print(f"- Validation samples: {len(self.val_embeddings)}")
+        # print(f"- Validation samples: {len(self.val_embeddings)}")
     
     @profile
     def load_data(self):
@@ -317,15 +323,15 @@ class FederatedClient(fl.client.NumPyClient):
 
         ##########################################################################################
         
-        # Validation embeddings
-        print("Extracting validation embeddings...")
-        start = time.time() #
-        self.val_embeddings = log_resource_usage(
-            "Usage for Extract Validation Embeddings (Perform)", extract_embeddings,
-            train_and_val_dataset['data_val'], self.interpreter)
-        end = time.time() #
-        print(f"[RUNTIME] Time for Extract Validation Embeddings (Perform): {end - start:.2f} seconds") #
-        self.val_labels = train_and_val_dataset['labels_val']
+        # # Validation embeddings
+        # print("Extracting validation embeddings...")
+        # start = time.time() #
+        # self.val_embeddings = log_resource_usage(
+        #     "Usage for Extract Validation Embeddings (Perform)", extract_embeddings,
+        #     train_and_val_dataset['data_val'], self.interpreter)
+        # end = time.time() #
+        # print(f"[RUNTIME] Time for Extract Validation Embeddings (Perform): {end - start:.2f} seconds") #
+        # self.val_labels = train_and_val_dataset['labels_val']
 
         ##########################################################################################
 
@@ -336,8 +342,10 @@ class FederatedClient(fl.client.NumPyClient):
         self.dataset = {
             'data_train': self.train_embeddings,
             'labels_train': self.train_labels,
-            'data_val': self.val_embeddings,
-            'labels_val': self.val_labels
+            # 'data_val': self.val_embeddings,
+            # 'labels_val': self.val_labels
+            'data_val': np.array([]),  # Empty validation data
+            'labels_val': np.array([])  # Empty validation labels
         }
     
     def get_parameters(self, config):
@@ -387,25 +395,27 @@ class FederatedClient(fl.client.NumPyClient):
         # Return updated parameters and training metrics
         return self.get_parameters(config), len(self.train_embeddings), {}
     
-    def evaluate(self, parameters, config):
-        """Evaluate the head on local validation data."""
-        # Set parameters from server
-        self.set_parameters(parameters)
+    ## Evaluate for validation
+    # def evaluate(self, parameters, config):
+    #     """Evaluate the head on local validation data."""
+    #     # Set parameters from server
+    #     self.set_parameters(parameters)
         
-        # Make predictions on validation data
-        predictions = self.head.forward(self.val_embeddings)
-        accuracy = np.mean(np.argmax(predictions, axis=1) == self.val_labels)
+    #     # Make predictions on validation data
+    #     predictions = self.head.forward(self.val_embeddings)
+    #     accuracy = np.mean(np.argmax(predictions, axis=1) == self.val_labels)
         
-        print(f"Local validation accuracy: {accuracy:.4f}")
+    #     print(f"Local validation accuracy: {accuracy:.4f}")
         
-        return float(accuracy), len(self.val_embeddings), {"accuracy": float(accuracy)}
+    #     return float(accuracy), len(self.val_embeddings), {"accuracy": float(accuracy)}
 
 
 def main():
-    global_start_time = time.time()
 
     # Log overall start
     log_phase_marker("START_FL_CLIENT")
+
+    global_start_time = time.time()
 
     import argparse
     
@@ -437,6 +447,9 @@ def main():
         server_address=args.server_address,
         client=client
     )
+
+    # Log end of federated learning
+    log_phase_marker("END_FEDERATED_LEARNING")
 
     global_end_time = time.time()
 
