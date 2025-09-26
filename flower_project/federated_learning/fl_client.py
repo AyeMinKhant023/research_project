@@ -266,7 +266,7 @@ class FederatedClient(fl.client.NumPyClient):
         start = time.time() #
 
         def load_tflite_interpreter(model_path):
-            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=1)  # The place to change threads: num_threads=1
+            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=4)  # The place to change threads: num_threads=1
             interpreter.allocate_tensors()
             return interpreter
         
