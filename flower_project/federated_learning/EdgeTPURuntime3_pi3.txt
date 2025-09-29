@@ -1,0 +1,77 @@
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message e8f2f72e-ff18-4d89-a701-6b4a335b42c4
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 4f3549b6-c304-4e40-b1ee-7177b1887980
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message 0900e24b-3a74-4c56-886d-b5ef311b7289
+[92mINFO [0m:      Disconnect and shut down
+[PHASE MARKER] START_FL_CLIENT at timestamp 1759102810.397 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[PHASE MARKER] START_LOAD_MODEL at timestamp 1759102810.413 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Load Feature Extractor (EdgeTPU Interpreter)
+  Time: 3.62 sec
+  Peak RAM Usage (psutil): 9.56 MB
+  Absolute Peak RAM Usage (psutil): 478.86 MB
+[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): 3.62 seconds
+[PHASE MARKER] END_LOAD_MODEL at timestamp 1759102814.436 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Loading local data...
+Reading dir: ./data/client1_data/sunflowers, which has 349 images
+Reading dir: ./data/client1_data/daisy, which has 316 images
+Reading dir: ./data/client1_data/roses, which has 320 images
+Reading dir: ./data/client1_data/dandelion, which has 449 images
+Reading dir: ./data/client1_data/tulips, which has 399 images
+[PHASE MARKER] START_EXTRACT_FEATURES at timestamp 1759102814.564 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Extracting training embeddings...
+
+[RESOURCE] Usage for Usage for Extract Train Embeddings (Perform)
+  Time: 46.24 sec
+  Peak RAM Usage (psutil): 8.89 MB
+  Absolute Peak RAM Usage (psutil): 489.01 MB
+[RUNTIME] Time for Extract Train Embeddings (Perform): 46.24 seconds
+[PHASE MARKER] END_EXTRACT_FEATURES at timestamp 1759102860.809 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Client initialized with:
+- Feature dimension: 1024
+- Number of classes: 5
+- Training samples: 1467
+[PHASE MARKER] START_FEDERATED_LEARNING at timestamp 1759102860.824 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Starting federated learning client, connecting to 172.19.173.233:8080
+NUM ITER=23
+Starting local training with lr=0.01, batch_size=200, num_iter=23
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1759102862.082 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 0.36 sec
+  Peak RAM Usage (psutil): 3.39 MB
+  Absolute Peak RAM Usage (psutil): 497.59 MB
+[RUNTIME] Time for  Train Classification Head: 0.36 seconds
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1759102862.446 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[PHASE MARKER] END_FEDERATED_LEARNING at timestamp 1759102862.616 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[PHASE MARKER] END_FL_CLIENT at timestamp 1759102862.618 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[RUNTIME] Total Runtime (Full Client Run): 52.21 seconds
