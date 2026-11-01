@@ -70,8 +70,8 @@ class FederatedServer:
         config = {
             "server_round": server_round,
             "learning_rate": 1e-2,
-            "batch_size": 100,
-            "num_iter": 100,  # Local training iterations
+            "batch_size": 200,
+            "local_epochs": 10,
         }
         return config
     
@@ -86,12 +86,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--feature_dim", type=int, required=True,
                        help="Feature dimension from embedding extractor")
-    parser.add_argument("--num_classes", type=int, required=True,
-                       help="Number of classes in the dataset")
-    parser.add_argument("--min_clients", type=int, default=2,
-                       help="Minimum number of clients (default: 2)")
-    parser.add_argument("--num_rounds", type=int, default=10,
-                       help="Number of federated learning rounds (default: 10)")
+    parser.add_argument("--num_classes", type=int, default=10,
+                       help="Number of classes in the dataset (default: 10 for CIFAR-10)")
+    parser.add_argument("--min_clients", type=int, default=1,
+                       help="Minimum number of clients (default: 1)")
+    parser.add_argument("--num_rounds", type=int, default=40,
+                       help="Number of federated learning rounds (default: 40)")
     parser.add_argument("--num_head_layers", type=int, default=0, choices=[0, 1, 2, 3, 4],
                        help="Number of hidden layers in classification head (0=baseline linear, 1-4=added layers with 256 neurons)")
     parser.add_argument("--auto_restart", action="store_true",

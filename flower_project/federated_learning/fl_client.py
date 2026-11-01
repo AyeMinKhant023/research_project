@@ -227,11 +227,13 @@ def extract_embeddings(image_paths, interpreter, is_edgetpu=False):
 ##########################################################################################
 
 class FederatedClient(fl.client.NumPyClient):
-    def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int, num_threads: int = 4, num_head_layers: int = 0):
+    def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int, num_threads: int = 4, num_head_layers: int = 0, local_epochs: int = 10):
         self.embedding_extractor_path = embedding_extractor_path
         self.data_dir = data_dir
         self.num_classes = num_classes
         self.num_threads = num_threads
+        self.num_head_layers = num_head_layers
+        self.local_epochs = local_epochs
         self.is_edgetpu = "edgetpu" in embedding_extractor_path
 
         # Log start of model loading
@@ -349,12 +351,15 @@ class FederatedClient(fl.client.NumPyClient):
         
         # Local training parameters
         learning_rate = config.get("learning_rate", 1e-2)
-        batch_size = 200
-        # batch_size = config.get("batch_size", 64)
-        num_iter = 23 #config.get("num_iter", 2)  # Reduced for federated settingß
+        batch_size = config.get("batch_size", 200)
+        local_epochs = config.get("local_epochs", getattr(self, "local_epochs", 10))
+        
+        # Calculate iterations to cover full local dataset for N epochs
+        n_train = len(self.train_embeddings)
+        iter_per_epoch = max(1, int(np.ceil(n_train / batch_size)))
+        num_iter = local_epochs * iter_per_epoch
 
-        print(f"NUM ITER={num_iter}")
-        print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
+        print(f"Starting local training: {n_train} samples, {local_epochs} epochs ({num_iter} iterations, batch_size={batch_size}, lr={learning_rate})")
 
         # Log start of head training
         log_phase_marker("START_TRAIN_HEAD")
@@ -413,6 +418,8 @@ def main():
                        help="Number of threads for CPU TFLite Interpreter (1, 2, or 4)")
     parser.add_argument("--num_head_layers", type=int, default=0, choices=[0, 1, 2, 3, 4],
                        help="Number of hidden layers in classification head (0=baseline linear, 1-4=added layers with 256 neurons)")
+    parser.add_argument("--local_epochs", type=int, default=10,
+                       help="Number of local epochs over the training dataset per FL round (default: 10)")
     parser.add_argument("--benchmark_head_only", action="store_true",
                        help="Directly execute local head training without requiring Flower server connection")
     
@@ -424,16 +431,21 @@ def main():
         args.data_dir, 
         args.num_classes,
         num_threads=args.num_threads,
-        num_head_layers=args.num_head_layers
+        num_head_layers=args.num_head_layers,
+        local_epochs=args.local_epochs
     )
 
     if args.benchmark_head_only:
-        print("[BENCHMARK] Executing on-device classification head training benchmark directly...")
+        n_train = len(client.train_embeddings)
+        batch_size = 200
+        iter_per_epoch = max(1, int(np.ceil(n_train / batch_size)))
+        num_iter = args.local_epochs * iter_per_epoch
+        print(f"[BENCHMARK] Executing on-device classification head training ({args.local_epochs} epochs = {num_iter} iterations)...")
         log_phase_marker("START_TRAIN_HEAD")
         start = time.time()
         log_resource_usage(
             "Usage for Train Classification Head", client.head.train_with_sgd,
-            client.dataset, num_iter=23, learning_rate=1e-2, batch_size=200)
+            client.dataset, num_iter=num_iter, learning_rate=1e-2, batch_size=batch_size)
         end = time.time()
         train_sec = end - start
         print(f"[RUNTIME] Time for  Train Classification Head: {train_sec:.4f} seconds")
