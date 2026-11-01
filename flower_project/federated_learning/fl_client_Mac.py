@@ -29,8 +29,9 @@ def get_image_paths(data_dir):
             classes = dirs
         else:
             assert classes[class_idx] in root
-            print('Reading dir: %s, which has %d images' % (root, len(files)))
-            for img_name in files:
+            valid_files = [f for f in files if not f.startswith('.')]
+            print('Reading dir: %s, which has %d images' % (root, len(valid_files)))
+            for img_name in valid_files:
                 image_paths.append(os.path.join(root, img_name))
                 labels.append(class_idx)
             class_idx += 1
