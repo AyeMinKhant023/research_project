@@ -1,5 +1,5 @@
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf (imported lazily below)
 from typing import Dict, Tuple
 import tempfile
 import os
@@ -298,3 +298,160 @@ if __name__ == "__main__":
     
     # Save weights
     model.save_weights("softmax_weights.npz")
+
+class MLPClassificationHead:
+    """Configurable Multi-Layer Perceptron (MLP) classification head.
+    
+    Supports 0, 1, 2, 3, or 4 hidden layers (256 neurons each by default)
+    with ReLU activations and a Softmax output layer.
+    """
+    def __init__(self, feature_dim: int, num_classes: int, num_hidden_layers: int = 0, 
+                 hidden_dim: int = 256, weight_scale: float = 0.05, reg: float = 0.0):
+        self.feature_dim = feature_dim
+        self.num_classes = num_classes
+        self.num_hidden_layers = num_hidden_layers
+        self.hidden_dim = hidden_dim
+        self.weight_scale = weight_scale
+        self.reg = reg
+
+        dims = [feature_dim] # 1024 
+        for _ in range(num_hidden_layers): # 0, 1, 2, 3, 4
+            dims.append(hidden_dim) # 256
+        dims.append(num_classes) # 5
+        self.layer_dims = dims
+
+        self.weights = []
+        self.biases = []
+        for i in range(len(dims) - 1):
+            w = np.random.normal(0, weight_scale, (dims[i], dims[i+1])).astype(np.float32)
+            b = np.zeros(dims[i+1], dtype=np.float32)
+            self.weights.append(w)
+            self.biases.append(b)
+
+        self.train_losses = []
+        self.train_accuracies = []
+        self.val_accuracies = []
+
+    @property
+    def W(self):
+        return self.weights[0] if self.weights else None
+
+    @W.setter
+    def W(self, val):
+        if self.weights:
+            self.weights[0] = val
+
+    @property
+    def b(self):
+        return self.biases[0] if self.biases else None
+
+    @b.setter
+    def b(self, val):
+        if self.biases:
+            self.biases[0] = val
+
+    def get_weights(self):
+        params = []
+        for w, b in zip(self.weights, self.biases):
+            params.append(w.flatten())
+            params.append(b.flatten())
+        return params
+
+    def set_weights(self, params):
+        idx = 0
+        for i in range(len(self.weights)):
+            self.weights[i] = params[idx].reshape(self.layer_dims[i], self.layer_dims[i+1]).astype(np.float32)
+            self.biases[i] = params[idx+1].reshape(self.layer_dims[i+1]).astype(np.float32)
+            idx += 2
+
+    def softmax(self, logits: np.ndarray) -> np.ndarray:
+        exp_logits = np.exp(logits - np.max(logits, axis=1, keepdims=True))
+        return exp_logits / np.sum(exp_logits, axis=1, keepdims=True)
+
+    def forward(self, X: np.ndarray):
+        activations = [X]
+        linear_outputs = []
+        curr_a = X
+        num_layers = len(self.weights)
+        for i in range(num_layers):
+            z = np.dot(curr_a, self.weights[i]) + self.biases[i]
+            linear_outputs.append(z)
+            if i < num_layers - 1:
+                curr_a = np.maximum(0, z)
+                activations.append(curr_a)
+            else:
+                probs = self.softmax(z)
+                activations.append(probs)
+        return probs, activations, linear_outputs
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        probs, _, _ = self.forward(X)
+        return probs
+
+    def compute_loss(self, X: np.ndarray, y: np.ndarray) -> float:
+        batch_size = X.shape[0]
+        probs = self.predict(X)
+        log_probs = np.log(probs + 1e-15)
+        loss = -np.sum(log_probs[np.arange(batch_size), y]) / batch_size
+        if self.reg > 0:
+            reg_loss = 0.5 * self.reg * sum(np.sum(w ** 2) for w in self.weights)
+            loss += reg_loss
+        return float(loss)
+
+    def compute_gradients(self, X: np.ndarray, y: np.ndarray):
+        batch_size = X.shape[0]
+        probs, activations, linear_outputs = self.forward(X)
+
+        y_onehot = np.zeros((batch_size, self.num_classes), dtype=np.float32)
+        y_onehot[np.arange(batch_size), y] = 1.0
+
+        d_z = (probs - y_onehot) / batch_size
+        grad_w = [None] * len(self.weights)
+        grad_b = [None] * len(self.biases)
+
+        for i in reversed(range(len(self.weights))):
+            a_prev = activations[i]
+            grad_w[i] = np.dot(a_prev.T, d_z) + (self.reg * self.weights[i])
+            grad_b[i] = np.sum(d_z, axis=0)
+
+            if i > 0:
+                d_a = np.dot(d_z, self.weights[i].T)
+                d_z = d_a * (linear_outputs[i-1] > 0)
+
+        return grad_w, grad_b
+
+    def get_accuracy(self, X: np.ndarray, y: np.ndarray) -> float:
+        if X is None or len(X) == 0:
+            return 0.0
+        probs = self.predict(X)
+        predictions = np.argmax(probs, axis=1)
+        return float(np.mean(predictions == y))
+
+    def train_with_sgd(self, data: Dict[str, np.ndarray], num_iter: int, 
+                       learning_rate: float, batch_size: int = 100, print_every: int = 0):
+        X_train = data['data_train']
+        y_train = data['labels_train']
+        n_train = X_train.shape[0]
+
+        for i in range(num_iter):
+            batch_indices = np.random.choice(n_train, min(batch_size, n_train), replace=False)
+            X_batch = X_train[batch_indices]
+            y_batch = y_train[batch_indices]
+
+            grad_w, grad_b = self.compute_gradients(X_batch, y_batch)
+
+            for l in range(len(self.weights)):
+                self.weights[l] -= learning_rate * grad_w[l]
+                self.biases[l] -= learning_rate * grad_b[l]
+
+            if print_every > 0 and (i + 1) % print_every == 0:
+                train_loss = self.compute_loss(X_batch, y_batch)
+                train_acc = self.get_accuracy(X_train, y_train)
+                print(f"Iteration {i+1}/{num_iter}: Loss = {train_loss:.4f}, Train Acc = {train_acc:.4f}")
+
+
+def create_classification_head(feature_dim: int, num_classes: int, num_head_layers: int = 0,
+                               hidden_dim: int = 256, weight_scale: float = 0.05, reg: float = 0.0):
+    """Factory to create classification head (0 layers = SoftmaxRegression baseline, 1-4 = MLP)."""
+    return MLPClassificationHead(feature_dim, num_classes, num_hidden_layers=num_head_layers,
+                                 hidden_dim=hidden_dim, weight_scale=weight_scale, reg=reg)

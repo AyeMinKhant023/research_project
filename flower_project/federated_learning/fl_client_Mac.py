@@ -4,7 +4,7 @@ import os
 import time
 from PIL import Image
 import tensorflow as tf
-from softmax_regression import SoftmaxRegression
+from softmax_regression import SoftmaxRegression, create_classification_head
 import contextlib
 from typing import Dict, List, Tuple, Optional
 
@@ -226,11 +226,14 @@ class FederatedClient(fl.client.NumPyClient):
         # Load and preprocess data
         self.load_data()
         
-        # Initialize head (softmax regression) - this is what gets trained
+        # Initialize head
+        self.num_head_layers = num_head_layers
         self.feature_dim = self.train_embeddings.shape[1]
-        self.head = SoftmaxRegression(
+        self.head = create_classification_head(
             self.feature_dim, 
             self.num_classes, 
+            num_head_layers=self.num_head_layers,
+            hidden_dim=256,
             weight_scale=5e-2, 
             reg=0.0
         )
@@ -327,15 +330,11 @@ class FederatedClient(fl.client.NumPyClient):
     
     def get_parameters(self, config):
         """Return current head parameters."""
-        # Return only the head parameters (weights and biases)
-        return [self.head.W.flatten(), self.head.b.flatten()]
+        return self.head.get_weights()
     
     def set_parameters(self, parameters):
         """Set head parameters received from server."""
-        # Reshape parameters back to original shape
-        W_flat, b_flat = parameters
-        self.head.W = W_flat.reshape(self.feature_dim, self.num_classes)
-        self.head.b = b_flat.reshape(self.num_classes)
+        self.head.set_weights(parameters)
     
     def fit(self, parameters, config):
         """Train the head locally using local data."""
@@ -370,7 +369,7 @@ class FederatedClient(fl.client.NumPyClient):
         self.set_parameters(parameters)
         
         # Make predictions on validation data
-        predictions = self.head.forward(self.val_embeddings)
+        predictions = self.head.predict(self.val_embeddings)
         accuracy = np.mean(np.argmax(predictions, axis=1) == self.val_labels)
         
         print(f"Local validation accuracy: {accuracy:.4f}")
@@ -390,6 +389,8 @@ def main():
                        help="Number of classes in the dataset")
     parser.add_argument("--server_address", default="localhost:8080",
                        help="Server address (default: localhost:8080)")
+    parser.add_argument("--num_head_layers", type=int, default=0, choices=[0, 1, 2, 3, 4],
+                       help="Number of hidden layers in classification head (0=baseline linear, 1-4=added layers with 256 neurons)")
     parser.add_argument("--input_size", type=int, nargs=2, default=[224, 224],
                        help="Input image size (height width) (default: 224 224)")
     

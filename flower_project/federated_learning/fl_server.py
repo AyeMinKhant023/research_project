@@ -8,10 +8,11 @@ from flwr.server.history import History
 
 
 class FederatedServer:
-    def __init__(self, feature_dim: int, num_classes: int, min_clients: int = 2):
+    def __init__(self, feature_dim: int, num_classes: int, min_clients: int = 2, num_head_layers: int = 0):
         self.feature_dim = feature_dim
         self.num_classes = num_classes
         self.min_clients = min_clients
+        self.num_head_layers = num_head_layers
         
         # Initialize global head parameters
         self.global_weights = self._initialize_parameters()
@@ -20,14 +21,13 @@ class FederatedServer:
         print(f"- Feature dimension: {feature_dim}")
         print(f"- Number of classes: {num_classes}")
         print(f"- Minimum clients: {min_clients}")
+        print(f"- Head layers: {num_head_layers}")
     
     def _initialize_parameters(self):
         """Initialize global head parameters."""
-        # Initialize weights and biases similar to SoftmaxRegression
-        weight_scale = 5e-2
-        W = np.random.randn(self.feature_dim, self.num_classes) * weight_scale
-        b = np.zeros(self.num_classes)
-        return [W.flatten(), b.flatten()]
+        from softmax_regression import create_classification_head
+        head = create_classification_head(self.feature_dim, self.num_classes, num_head_layers=self.num_head_layers)
+        return head.get_weights()
     
     def get_evaluate_fn(self):
         """Return evaluation function for global model evaluation."""
@@ -62,7 +62,7 @@ class FederatedServer:
             evaluate_metrics_aggregation_fn=self.weighted_average,
             on_fit_config_fn=self.get_fit_config,
             on_evaluate_config_fn=self.get_evaluate_config,
-            initial_parameters=fl.common.ndarrays_to_parameters(self.global_weights),
+            initial_parameters=None,  # Dynamic: automatically adopts client model shape (0, 1, 2, 3, 4 layers)
         )
     
     def get_fit_config(self, server_round: int):
@@ -92,6 +92,10 @@ def main():
                        help="Minimum number of clients (default: 2)")
     parser.add_argument("--num_rounds", type=int, default=10,
                        help="Number of federated learning rounds (default: 10)")
+    parser.add_argument("--num_head_layers", type=int, default=0, choices=[0, 1, 2, 3, 4],
+                       help="Number of hidden layers in classification head (0=baseline linear, 1-4=added layers with 256 neurons)")
+    parser.add_argument("--auto_restart", action="store_true",
+                       help="Automatically keep server running across multiple benchmark rounds")
     parser.add_argument("--server_address", default="0.0.0.0:8080",
                        help="Server address (default: 0.0.0.0:8080)")
     
@@ -101,7 +105,8 @@ def main():
     fed_server = FederatedServer(
         args.feature_dim,
         args.num_classes,
-        args.min_clients
+        args.min_clients,
+        num_head_layers=args.num_head_layers
     )
     
     # Get strategy
@@ -112,22 +117,25 @@ def main():
     print(f"Will run for {args.num_rounds} rounds")
     
     # Start federated learning server
-    history = fl.server.start_server(
-        server_address=args.server_address,
-        config=fl.server.ServerConfig(num_rounds=args.num_rounds),
-        strategy=strategy,
-    )
-    
-    # Print final results
-    print("\n" + "="*50)
-    print("FEDERATED LEARNING COMPLETED")
-    print("="*50)
-    
-    if history.metrics_distributed:
-        final_accuracy = history.metrics_distributed['accuracy'][-1][1]
-        print(f"Final global accuracy: {final_accuracy:.4f}")
-    
-    print(f"Training completed after {args.num_rounds} rounds")
+    round_count = 0
+    while True:
+        round_count += 1
+        print(f"[FL SERVER] >>> Listening on {args.server_address} (Waiting for client run #{round_count})...")
+        try:
+            strategy = fed_server.get_strategy()
+            fl.server.start_server(
+                server_address=args.server_address,
+                config=fl.server.ServerConfig(num_rounds=args.num_rounds),
+                strategy=strategy,
+            )
+            print("[FL SERVER] ✅ FL Round completed!")
+        except Exception as e:
+            print(f"[FL SERVER] Connection finished or reset: {e}")
+
+        if not args.auto_restart:
+            break
+        import time
+        time.sleep(1)
 
 
 if __name__ == "__main__":

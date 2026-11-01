@@ -6,7 +6,7 @@ import psutil
 from PIL import Image
 from pycoral.adapters import classify
 from pycoral.adapters import common
-from softmax_regression import SoftmaxRegression
+from softmax_regression import SoftmaxRegression, create_classification_head
 import contextlib
 from typing import Dict, List, Tuple, Optional
 from memory_profiler import profile
@@ -147,41 +147,34 @@ def log_resource_usage(label, func, *args, **kwargs):
 
 
 ##########################################################################################
-# # With Edge TPU Interpreter #
-# def extract_embeddings(image_paths, interpreter):
-#     """Uses model to process images as embeddings."""
-#     input_size = common.input_size(interpreter)
-#     feature_dim = classify.num_classes(interpreter)
-#     embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-    
-#     for idx, path in enumerate(image_paths): 
-#         with test_image(path) as img:
-#             common.set_input(interpreter, img.resize(input_size, Image.NEAREST))
-#             interpreter.invoke()
-#             embeddings[idx, :] = classify.get_scores(interpreter)
-
-#     return embeddings
-
-##########################################################################################
-
-# With tflite Interpreter #
-def extract_embeddings(image_paths, interpreter):
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    input_shape = input_details[0]['shape']
-    input_size = (input_shape[2], input_shape[1])  # width, height
-    feature_dim = output_details[0]['shape'][-1]
-    embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
-    for idx, path in enumerate(image_paths):
-        with test_image(path) as img:
-            img_resized = img.resize(input_size, Image.NEAREST)
-            img_array = np.array(img_resized).astype(np.uint8)
-            img_array = np.expand_dims(img_array, axis=0)
-            interpreter.set_tensor(input_details[0]['index'], img_array)
-            interpreter.invoke()
-            output = interpreter.get_tensor(output_details[0]['index'])
-            embeddings[idx, :] = output.squeeze()
-    return embeddings
+def extract_embeddings(image_paths, interpreter, is_edgetpu=False):
+    if is_edgetpu:
+        input_size = common.input_size(interpreter)
+        feature_dim = classify.num_classes(interpreter)
+        embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
+        for idx, path in enumerate(image_paths): 
+            with test_image(path) as img:
+                common.set_input(interpreter, img.resize(input_size, Image.NEAREST))
+                interpreter.invoke()
+                embeddings[idx, :] = classify.get_scores(interpreter)
+        return embeddings
+    else:
+        input_details = interpreter.get_input_details()
+        output_details = interpreter.get_output_details()
+        input_shape = input_details[0]['shape']
+        input_size = (input_shape[2], input_shape[1])  # width, height
+        feature_dim = output_details[0]['shape'][-1]
+        embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
+        for idx, path in enumerate(image_paths):
+            with test_image(path) as img:
+                img_resized = img.resize(input_size, Image.NEAREST)
+                img_array = np.array(img_resized).astype(np.uint8)
+                img_array = np.expand_dims(img_array, axis=0)
+                interpreter.set_tensor(input_details[0]['index'], img_array)
+                interpreter.invoke()
+                output = interpreter.get_tensor(output_details[0]['index'])
+                embeddings[idx, :] = output.squeeze()
+        return embeddings
 ##########################################################################################
 
 # # For ResNet
@@ -233,50 +226,38 @@ def extract_embeddings(image_paths, interpreter):
 ##########################################################################################
 
 class FederatedClient(fl.client.NumPyClient):
-    def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int):
+    def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int, num_threads: int = 4, num_head_layers: int = 0):
         self.embedding_extractor_path = embedding_extractor_path
         self.data_dir = data_dir
         self.num_classes = num_classes
+        self.num_threads = num_threads
+        self.is_edgetpu = "edgetpu" in embedding_extractor_path
 
         # Log start of model loading
         log_phase_marker("START_LOAD_MODEL")
 
-        ##########################################################################################
-        # Initialize the backbone (embedding extractor) - this stays frozen
-
-        # # For Edge TPU Interpreter #
-        # from pycoral.utils.edgetpu import make_interpreter
-        # start = time.time() #
-
-        # def load_interpreter(model_path):
-        #     interpreter = make_interpreter(model_path, device=':0')
-        #     interpreter.allocate_tensors()
-        #     return interpreter
-
-        # self.interpreter = log_resource_usage(
-        #     "Usage for Load Feature Extractor (EdgeTPU Interpreter)", load_interpreter, embedding_extractor_path)
-
-        # end = time.time() #
-        # print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.2f} seconds") #
-
-        ##########################################################################################
-
-        # With tflite Interpreter #
-        import tensorflow as tf
-        start = time.time() #
-
-        def load_tflite_interpreter(model_path):
-            interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=4)  # The place to change threads: num_threads=1
-            interpreter.allocate_tensors()
-            return interpreter
-        
-        self.interpreter = log_resource_usage(
-            "Usage for Load Feature Extractor (TFLite Interpreter)", load_tflite_interpreter, embedding_extractor_path)
-        
-        end = time.time() #
-        print(f"[RUNTIME] Time for Load Feature Extractor (TFLite Interpreter): {end - start:.2f} seconds") #
-
-        ##########################################################################################
+        if self.is_edgetpu:
+            from pycoral.utils.edgetpu import make_interpreter
+            start = time.time()
+            def load_interpreter(model_path):
+                interpreter = make_interpreter(model_path, device=':0')
+                interpreter.allocate_tensors()
+                return interpreter
+            self.interpreter = log_resource_usage(
+                "Usage for Load Feature Extractor (EdgeTPU Interpreter)", load_interpreter, embedding_extractor_path)
+            end = time.time()
+            print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.2f} seconds")
+        else:
+            import tensorflow as tf
+            start = time.time()
+            def load_tflite_interpreter(model_path):
+                interpreter = tf.lite.Interpreter(model_path=model_path, num_threads=self.num_threads)
+                interpreter.allocate_tensors()
+                return interpreter
+            self.interpreter = log_resource_usage(
+                f"Usage for Load Feature Extractor (TFLite Interpreter, {self.num_threads} threads)", load_tflite_interpreter, embedding_extractor_path)
+            end = time.time()
+            print(f"[RUNTIME] Time for Load Feature Extractor (TFLite Interpreter, {self.num_threads} threads): {end - start:.2f} seconds")
 
         # Log end of model loading
         log_phase_marker("END_LOAD_MODEL")
@@ -284,11 +265,14 @@ class FederatedClient(fl.client.NumPyClient):
         # Load and preprocess data
         self.load_data()
         
-        # Initialize head (softmax regression) - this is what gets trained
+        # Initialize head (0 layers = SoftmaxRegression baseline, 1-4 = MLP with 256 neurons each)
+        self.num_head_layers = num_head_layers
         self.feature_dim = self.train_embeddings.shape[1]
-        self.head = SoftmaxRegression(
+        self.head = create_classification_head(
             self.feature_dim, 
             self.num_classes, 
+            num_head_layers=self.num_head_layers,
+            hidden_dim=256,
             weight_scale=5e-2, 
             reg=0.0
         )
@@ -316,7 +300,7 @@ class FederatedClient(fl.client.NumPyClient):
         start = time.time() #
         self.train_embeddings = log_resource_usage(
             "Usage for Extract Train Embeddings (Perform)", extract_embeddings, 
-            train_and_val_dataset['data_train'], self.interpreter)
+            train_and_val_dataset['data_train'], self.interpreter, self.is_edgetpu)
         end = time.time() #
         print(f"[RUNTIME] Time for Extract Train Embeddings (Perform): {end - start:.2f} seconds") #
         self.train_labels = train_and_val_dataset['labels_train']
@@ -350,15 +334,11 @@ class FederatedClient(fl.client.NumPyClient):
     
     def get_parameters(self, config):
         """Return current head parameters."""
-        # Return only the head parameters (weights and biases)
-        return [self.head.W.flatten(), self.head.b.flatten()]
+        return self.head.get_weights()
     
     def set_parameters(self, parameters):
         """Set head parameters received from server."""
-        # Reshape parameters back to original shape
-        W_flat, b_flat = parameters
-        self.head.W = W_flat.reshape(self.feature_dim, self.num_classes)
-        self.head.b = b_flat.reshape(self.num_classes)
+        self.head.set_weights(parameters)
     
     # @profile
     def fit(self, parameters, config):
@@ -428,6 +408,12 @@ def main():
                        help="Number of classes in the dataset")
     parser.add_argument("--server_address", default="localhost:8080",
                        help="Server address (default: localhost:8080)")
+    parser.add_argument("--num_threads", type=int, default=4,
+                       help="Number of threads for CPU TFLite Interpreter (1, 2, or 4)")
+    parser.add_argument("--num_head_layers", type=int, default=0, choices=[0, 1, 2, 3, 4],
+                       help="Number of hidden layers in classification head (0=baseline linear, 1-4=added layers with 256 neurons)")
+    parser.add_argument("--benchmark_head_only", action="store_true",
+                       help="Directly execute local head training without requiring Flower server connection")
     
     args = parser.parse_args()
     
@@ -435,8 +421,25 @@ def main():
     client = FederatedClient(
         args.embedding_extractor_path, 
         args.data_dir, 
-        args.num_classes
+        args.num_classes,
+        num_threads=args.num_threads,
+        num_head_layers=args.num_head_layers
     )
+
+    if args.benchmark_head_only:
+        print("[BENCHMARK] Executing on-device classification head training benchmark directly...")
+        log_phase_marker("START_TRAIN_HEAD")
+        start = time.time()
+        log_resource_usage(
+            "Usage for Train Classification Head", client.head.train_with_sgd,
+            client.dataset, num_iter=23, learning_rate=1e-2, batch_size=200)
+        end = time.time()
+        train_sec = end - start
+        print(f"[RUNTIME] Time for  Train Classification Head: {train_sec:.4f} seconds")
+        log_phase_marker("END_TRAIN_HEAD")
+        global_end_time = time.time()
+        print(f"[RUNTIME] Total Runtime (Full Client Run): {global_end_time - global_start_time:.2f} seconds")
+        return
 
     # Log start of federated learning
     log_phase_marker("START_FEDERATED_LEARNING")
