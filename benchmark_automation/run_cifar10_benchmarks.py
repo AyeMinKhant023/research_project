@@ -58,13 +58,13 @@ def parse_timings_from_log(log_text: str):
     """Parses exact timings from client run output."""
     m_load = re.search(r'Time for Load Feature Extractor[^:]*:\s*([\d\.]+)', log_text)
     m_ext = re.search(r'Time for Extract Train Embeddings[^:]*:\s*([\d\.]+)', log_text)
-    m_train = re.search(r'Time for\s+Train Classification Head[^:]*:\s*([\d\.]+)', log_text)
+    train_matches = re.findall(r'Time for\s+Train Classification Head[^:]*:\s*([\d\.]+)', log_text)
     m_total = re.search(r'Total Runtime \(Full Client Run\):\s*([\d\.]+)', log_text)
 
     load_time = float(m_load.group(1)) if m_load else 0.0
     ext_time = float(m_ext.group(1)) if m_ext else 0.0
     offline_total = load_time + ext_time
-    train_time = float(m_train.group(1)) if m_train else 0.0
+    train_time = float(train_matches[-1]) if train_matches else 0.0
     runtime_total = train_time
     full_total = float(m_total.group(1)) if m_total else (offline_total + runtime_total)
 
@@ -333,3 +333,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

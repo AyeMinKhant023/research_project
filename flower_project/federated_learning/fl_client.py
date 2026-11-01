@@ -265,6 +265,8 @@ class FederatedClient(fl.client.NumPyClient):
         # Log end of model loading
         log_phase_marker("END_LOAD_MODEL")
 
+        self.round_train_times = []
+
         # Load and preprocess data
         self.load_data()
         
@@ -371,7 +373,10 @@ class FederatedClient(fl.client.NumPyClient):
             "Usage for Train Classification Head", self.head.train_with_sgd,
             self.dataset, num_iter, learning_rate, batch_size=batch_size)
         end = time.time() #
-        print(f"[RUNTIME] Time for  Train Classification Head: {end - start:.2f} seconds") #
+        round_t = end - start
+        self.round_train_times.append(round_t)
+        print(f"[ROUND {len(self.round_train_times)}] Train Head Time: {round_t:.4f} seconds (cumulative: {sum(self.round_train_times):.4f}s)")
+        print(f"[RUNTIME] Time for  Train Classification Head (Round {len(self.round_train_times)}): {round_t:.4f} seconds") #
 
         ##########################################################################################
 
@@ -466,6 +471,11 @@ def main():
 
     # Log end of federated learning
     log_phase_marker("END_FEDERATED_LEARNING")
+
+    total_head_time = sum(client.round_train_times)
+    n_rounds = len(client.round_train_times)
+    avg_per_round = total_head_time / max(1, n_rounds)
+    print(f"\n[RUNTIME] Time for  Train Classification Head: {total_head_time:.4f} seconds ({n_rounds} rounds total, avg {avg_per_round:.4f}s/round)")
 
     global_end_time = time.time()
 
