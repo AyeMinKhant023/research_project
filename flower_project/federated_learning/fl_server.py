@@ -8,47 +8,48 @@ from flwr.server.history import History
 
 
 class FederatedServer:
-    def __init__(self, feature_dim: int, num_classes: int, min_clients: int = 2, num_head_layers: int = 0):
+    def __init__(self, feature_dim: int, num_classes: int, min_clients: int = 2, num_head_layers: int = 0, hidden_dim: int = 512):
         self.feature_dim = feature_dim
         self.num_classes = num_classes
         self.min_clients = min_clients
         self.num_head_layers = num_head_layers
-        
+        self.hidden_dim = hidden_dim
+
         # Initialize global head parameters
         self.global_weights = self._initialize_parameters()
-        
+
         print(f"Server initialized with:")
         print(f"- Feature dimension: {feature_dim}")
         print(f"- Number of classes: {num_classes}")
         print(f"- Minimum clients: {min_clients}")
-        print(f"- Head layers: {num_head_layers}")
-    
+        print(f"- Head layers: {num_head_layers} (width={hidden_dim})")
+
     def _initialize_parameters(self):
         """Initialize global head parameters."""
         from softmax_regression import create_classification_head
-        head = create_classification_head(self.feature_dim, self.num_classes, num_head_layers=self.num_head_layers)
+        head = create_classification_head(
+            self.feature_dim,
+            self.num_classes,
+            num_head_layers=self.num_head_layers,
+            hidden_dim=self.hidden_dim,
+        )
         return head.get_weights()
-    
+
     def get_evaluate_fn(self):
         """Return evaluation function for global model evaluation."""
         def evaluate(server_round: int, parameters: List[np.ndarray], config: Dict[str, str]) -> Optional[Tuple[float, Dict[str, float]]]:
             print(f"Global evaluation at round {server_round}")
-            # In a real scenario, you might want to evaluate on a global test set
-            # For now, we'll return a dummy evaluation
             return 0.0, {"global_accuracy": 0.0}
-        
+
         return evaluate
-    
+
     def weighted_average(self, metrics: List[Tuple[int, Metrics]]) -> Metrics:
-        """Aggregate evaluation metrics from clients."""
-        total_examples = sum(num_examples for num_examples, _ in metrics)
-        
+        """Aggregate evaluation metrics from clients safely."""
+        acc_entries = [(num_examples, m["accuracy"]) for num_examples, m in metrics if "accuracy" in m]
+        total_examples = sum(num_examples for num_examples, _ in acc_entries)
         if total_examples == 0:
             return {}
-        
-        # Calculate weighted average of accuracies
-        weighted_acc = sum(num_examples * m["accuracy"] for num_examples, m in metrics) / total_examples
-        
+        weighted_acc = sum(num_examples * acc for num_examples, acc in acc_entries) / total_examples
         return {"accuracy": weighted_acc}
     
     def get_strategy(self):
@@ -92,8 +93,10 @@ def main():
                        help="Minimum number of clients (default: 1)")
     parser.add_argument("--num_rounds", type=int, default=40,
                        help="Number of federated learning rounds (default: 40)")
-    parser.add_argument("--num_head_layers", type=int, default=0, choices=[0, 1, 2, 3, 4],
-                       help="Number of hidden layers in classification head (0=baseline linear, 1-4=added layers with 256 neurons)")
+    parser.add_argument("--num_head_layers", type=int, default=0,
+                       help="Number of hidden layers in classification head (0=baseline linear, 3/6/9/12=MLP)")
+    parser.add_argument("--hidden_dim", type=int, default=512,
+                       help="Hidden layer width in classification head (default: 512)")
     parser.add_argument("--auto_restart", action="store_true",
                        help="Automatically keep server running across multiple benchmark rounds")
     parser.add_argument("--server_address", default="0.0.0.0:8080",
@@ -106,7 +109,8 @@ def main():
         args.feature_dim,
         args.num_classes,
         args.min_clients,
-        num_head_layers=args.num_head_layers
+        num_head_layers=args.num_head_layers,
+        hidden_dim=args.hidden_dim,
     )
     
     # Get strategy

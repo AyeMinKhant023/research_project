@@ -215,11 +215,14 @@ def extract_embeddings_saved_model(image_paths, model, input_size):
 
 class FederatedClient(fl.client.NumPyClient):
     def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int, 
-                 input_size: Tuple[int, int] = (224, 224)):
+                 input_size: Tuple[int, int] = (224, 224), num_head_layers: int = 0,
+                 hidden_dim: int = 512):
         self.embedding_extractor_path = embedding_extractor_path
         self.data_dir = data_dir
         self.num_classes = num_classes
         self.input_size = input_size
+        self.num_head_layers = num_head_layers
+        self.hidden_dim = hidden_dim
         
         # Initialize the backbone (embedding extractor) - this stays frozen
         self.load_model()
@@ -228,14 +231,13 @@ class FederatedClient(fl.client.NumPyClient):
         self.load_data()
         
         # Initialize head
-        self.num_head_layers = num_head_layers
         self.feature_dim = self.train_embeddings.shape[1]
         self.head = create_classification_head(
             self.feature_dim, 
             self.num_classes, 
             num_head_layers=self.num_head_layers,
-            hidden_dim=256,
-            weight_scale=5e-2, 
+            hidden_dim=self.hidden_dim,
+            weight_scale=None, 
             reg=0.0
         )
         
@@ -369,13 +371,13 @@ class FederatedClient(fl.client.NumPyClient):
         # Set parameters from server
         self.set_parameters(parameters)
         
-        # Make predictions on validation data
-        predictions = self.head.predict(self.val_embeddings)
-        accuracy = np.mean(np.argmax(predictions, axis=1) == self.val_labels)
+        # Compute loss and accuracy on validation data
+        loss = self.head.compute_loss(self.val_embeddings, self.val_labels)
+        accuracy = self.head.get_accuracy(self.val_embeddings, self.val_labels)
         
-        print(f"Local validation accuracy: {accuracy:.4f}")
+        print(f"Local validation loss: {loss:.4f}, accuracy: {accuracy:.4f}")
         
-        return float(accuracy), len(self.val_embeddings), {"accuracy": float(accuracy)}
+        return float(loss), len(self.val_embeddings), {"accuracy": float(accuracy)}
 
 
 def main():
@@ -390,8 +392,10 @@ def main():
                        help="Number of classes in the dataset")
     parser.add_argument("--server_address", default="localhost:8080",
                        help="Server address (default: localhost:8080)")
-    parser.add_argument("--num_head_layers", type=int, default=0, choices=[0, 1, 2, 3, 4],
-                       help="Number of hidden layers in classification head (0=baseline linear, 1-4=added layers with 256 neurons)")
+    parser.add_argument("--num_head_layers", type=int, default=0,
+                       help="Number of hidden layers in classification head (0=baseline linear, 3/6/9/12=MLP)")
+    parser.add_argument("--hidden_dim", type=int, default=512,
+                       help="Hidden layer width in classification head (default: 512)")
     parser.add_argument("--input_size", type=int, nargs=2, default=[224, 224],
                        help="Input image size (height width) (default: 224 224)")
     
@@ -402,7 +406,9 @@ def main():
         args.embedding_extractor_path, 
         args.data_dir, 
         args.num_classes,
-        input_size=tuple(args.input_size)
+        input_size=tuple(args.input_size),
+        num_head_layers=args.num_head_layers,
+        hidden_dim=args.hidden_dim,
     )
     
     # Start federated learning

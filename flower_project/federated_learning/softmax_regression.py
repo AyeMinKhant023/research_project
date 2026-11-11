@@ -302,11 +302,12 @@ if __name__ == "__main__":
 class MLPClassificationHead:
     """Configurable Multi-Layer Perceptron (MLP) classification head.
     
-    Supports 0, 1, 2, 3, or 4 hidden layers (256 neurons each by default)
-    with ReLU activations and a Softmax output layer.
+    Supports arbitrary hidden layer counts (e.g., 0, 1, 2, 3, 4 or 0, 3, 6, 9, 12)
+    with configurable hidden width (e.g., 256 or 512 neurons each) with ReLU
+    activations and a Softmax output layer.
     """
     def __init__(self, feature_dim: int, num_classes: int, num_hidden_layers: int = 0, 
-                 hidden_dim: int = 256, weight_scale: float = 0.05, reg: float = 0.0):
+                 hidden_dim: int = 256, weight_scale: float = None, reg: float = 0.0):
         self.feature_dim = feature_dim
         self.num_classes = num_classes
         self.num_hidden_layers = num_hidden_layers
@@ -314,16 +315,24 @@ class MLPClassificationHead:
         self.weight_scale = weight_scale
         self.reg = reg
 
-        dims = [feature_dim] # 1024 
-        for _ in range(num_hidden_layers): # 0, 1, 2, 3, 4
-            dims.append(hidden_dim) # 256
-        dims.append(num_classes) # 5
+        dims = [feature_dim]
+        for _ in range(num_hidden_layers):
+            dims.append(hidden_dim)
+        dims.append(num_classes)
         self.layer_dims = dims
 
         self.weights = []
         self.biases = []
         for i in range(len(dims) - 1):
-            w = np.random.normal(0, weight_scale, (dims[i], dims[i+1])).astype(np.float32)
+            if weight_scale is not None:
+                scale = float(weight_scale)
+            elif i < len(dims) - 2:
+                # He initialization for ReLU hidden layers preserves gradient variance across deep heads (e.g., 12 layers)
+                scale = float(np.sqrt(2.0 / dims[i]))
+            else:
+                # Xavier/Glorot initialization for final linear/softmax layer
+                scale = float(np.sqrt(1.0 / dims[i]))
+            w = np.random.normal(0, scale, (dims[i], dims[i+1])).astype(np.float32)
             b = np.zeros(dims[i+1], dtype=np.float32)
             self.weights.append(w)
             self.biases.append(b)
@@ -331,6 +340,12 @@ class MLPClassificationHead:
         self.train_losses = []
         self.train_accuracies = []
         self.val_accuracies = []
+
+    def count_parameters(self) -> Dict[str, int]:
+        """Return exact parameter counts (weights, biases, total) for this head."""
+        total_w = int(sum(w.size for w in self.weights))
+        total_b = int(sum(b.size for b in self.biases))
+        return {"weights": total_w, "biases": total_b, "total": total_w + total_b}
 
     @property
     def W(self):
@@ -405,13 +420,17 @@ class MLPClassificationHead:
         y_onehot = np.zeros((batch_size, self.num_classes), dtype=np.float32)
         y_onehot[np.arange(batch_size), y] = 1.0
 
-        d_z = (probs - y_onehot) / batch_size
+        d_z = (probs - y_onehot) / np.float32(batch_size)
         grad_w = [None] * len(self.weights)
         grad_b = [None] * len(self.biases)
 
+        reg = np.float32(self.reg)
         for i in reversed(range(len(self.weights))):
             a_prev = activations[i]
-            grad_w[i] = np.dot(a_prev.T, d_z) + (self.reg * self.weights[i])
+            gw = np.dot(a_prev.T, d_z)
+            if self.reg > 0:
+                gw = gw + (reg * self.weights[i])
+            grad_w[i] = gw
             grad_b[i] = np.sum(d_z, axis=0)
 
             if i > 0:
@@ -432,6 +451,7 @@ class MLPClassificationHead:
         X_train = data['data_train']
         y_train = data['labels_train']
         n_train = X_train.shape[0]
+        lr = np.float32(learning_rate)
 
         for i in range(num_iter):
             batch_indices = np.random.choice(n_train, min(batch_size, n_train), replace=False)
@@ -441,8 +461,8 @@ class MLPClassificationHead:
             grad_w, grad_b = self.compute_gradients(X_batch, y_batch)
 
             for l in range(len(self.weights)):
-                self.weights[l] -= learning_rate * grad_w[l]
-                self.biases[l] -= learning_rate * grad_b[l]
+                self.weights[l] -= lr * grad_w[l]
+                self.biases[l] -= lr * grad_b[l]
 
             if print_every > 0 and (i + 1) % print_every == 0:
                 train_loss = self.compute_loss(X_batch, y_batch)
@@ -451,7 +471,7 @@ class MLPClassificationHead:
 
 
 def create_classification_head(feature_dim: int, num_classes: int, num_head_layers: int = 0,
-                               hidden_dim: int = 256, weight_scale: float = 0.05, reg: float = 0.0):
-    """Factory to create classification head (0 layers = SoftmaxRegression baseline, 1-4 = MLP)."""
+                               hidden_dim: int = 256, weight_scale: float = None, reg: float = 0.0):
+    """Factory to create classification head (0 layers = SoftmaxRegression baseline, N = MLP with ReLU)."""
     return MLPClassificationHead(feature_dim, num_classes, num_hidden_layers=num_head_layers,
                                  hidden_dim=hidden_dim, weight_scale=weight_scale, reg=reg)
