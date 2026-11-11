@@ -286,6 +286,7 @@ def start_managed_flower_server(args):
     port = int(args.server_address.split(":")[-1]) if ":" in args.server_address else 8080
     cmd = [
         os.path.join(PROJECT_ROOT, ".venv", "bin", "python"),
+        "-u",
         os.path.join(FL_DIR, "fl_server.py"),
         "--feature_dim", "1024",
         "--num_classes", str(args.num_classes),
@@ -297,7 +298,7 @@ def start_managed_flower_server(args):
     ]
     log_path = os.path.join(args.output_dir, "flower_server.log")
     os.makedirs(args.output_dir, exist_ok=True)
-    log_fp = open(log_path, "w")
+    log_fp = open(log_path, "w", buffering=1)
     proc = subprocess.Popen(cmd, stdout=log_fp, stderr=subprocess.STDOUT)
 
     for _ in range(30):
@@ -365,7 +366,7 @@ def run_single_trial(backbone_key, cfg, num_layers, run_idx, args, raw_dir, cloc
             )
 
     pi_cmd = (
-        f"{args.pi_python} fl_client.py "
+        f"{args.pi_python} -u fl_client.py "
         f"--embedding_extractor_path {cfg['model']} "
         f"--data_dir {args.data_dir} "
         f"--num_classes {args.num_classes} "
@@ -382,21 +383,40 @@ def run_single_trial(backbone_key, cfg, num_layers, run_idx, args, raw_dir, cloc
     print(f"  -> Executing {args.num_rounds}-round FL client on Raspberry Pi 5...")
     start_t = time.time()
     ssh_output = ""
-    try:
-        child = pexpect.spawn(
-            "ssh",
-            ["-o", "StrictHostKeyChecking=no", args.pi_host, f"cd ~/research_project/flower_project/federated_learning && {pi_cmd}"],
-            timeout=args.ssh_timeout,
-            encoding="utf-8",
-            codec_errors="replace",
-        )
-        idx = child.expect(["[pP]assword:", pexpect.EOF, pexpect.TIMEOUT])
-        if idx == 0:
-            child.sendline(args.pi_pass)
-            child.expect(pexpect.EOF, timeout=args.ssh_timeout)
-        ssh_output = child.before or ""
-    except Exception as e:
-        print(f"⚠️ Warning during Pi execution: {e}")
+    child = None
+    with open(client_log_file, "w", encoding="utf-8", errors="replace", buffering=1) as log_fp:
+        try:
+            child = pexpect.spawn(
+                "ssh",
+                [
+                    "-o", "StrictHostKeyChecking=no",
+                    "-o", "ConnectTimeout=15",
+                    "-o", "ServerAliveInterval=15",
+                    "-o", "ServerAliveCountMax=3",
+                    args.pi_host,
+                    f"cd ~/research_project/flower_project/federated_learning && {pi_cmd}",
+                ],
+                timeout=args.ssh_timeout,
+                encoding="utf-8",
+                codec_errors="replace",
+            )
+            child.logfile_read = log_fp
+            idx = child.expect(["[pP]assword:", pexpect.EOF, pexpect.TIMEOUT])
+            if idx == 0:
+                child.sendline(args.pi_pass)
+                child.expect(pexpect.EOF, timeout=args.ssh_timeout)
+        except Exception as e:
+            print(f"⚠️ Warning during Pi execution: {e}")
+        finally:
+            if child is not None:
+                try:
+                    child.close()
+                except Exception:
+                    pass
+
+    if os.path.exists(client_log_file):
+        with open(client_log_file, "r", encoding="utf-8", errors="replace") as f:
+            ssh_output = f.read()
 
     if logger_proc is not None:
         time.sleep(1.0)
@@ -405,9 +425,6 @@ def run_single_trial(backbone_key, cfg, num_layers, run_idx, args, raw_dir, cloc
             logger_proc.wait(timeout=3)
         except Exception:
             logger_proc.kill()
-
-    with open(client_log_file, "w") as f:
-        f.write(ssh_output)
 
     runtime_data = parse_timings_from_log(ssh_output)
     round_metrics = parse_round_metrics_from_log(ssh_output) if track_acc else []
@@ -431,6 +448,9 @@ def run_single_trial(backbone_key, cfg, num_layers, run_idx, args, raw_dir, cloc
                 "scp",
                 [
                     "-o", "StrictHostKeyChecking=no",
+                    "-o", "ConnectTimeout=10",
+                    "-o", "ServerAliveInterval=10",
+                    "-o", "ServerAliveCountMax=2",
                     f"{args.pi_host}:~/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt",
                     phases_local,
                 ],

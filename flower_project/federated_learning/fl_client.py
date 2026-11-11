@@ -223,10 +223,10 @@ class FederatedClient(fl.client.NumPyClient):
             print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.2f} seconds")
         else:
             try:
+                from tflite_runtime.interpreter import Interpreter as InterpreterCls
+            except ImportError:
                 import tensorflow as tf
                 InterpreterCls = tf.lite.Interpreter
-            except ImportError:
-                from tflite_runtime.interpreter import Interpreter as InterpreterCls
 
             start = time.time()
 
