@@ -314,6 +314,49 @@ def start_managed_flower_server(args):
     raise RuntimeError(f"Timed out waiting for Flower server on port {port}. See {log_path}")
 
 
+def wait_for_pi_cooldown(pi_host: str, pi_pass: str, max_temp_c: float = 58.0, timeout_s: float = 120.0):
+    """Checks Pi 5 SoC temperature via vcgencmd and waits until temp <= max_temp_c before starting a trial."""
+    import pexpect
+
+    t0 = time.time()
+    while time.time() - t0 < timeout_s:
+        try:
+            child = pexpect.spawn(
+                "ssh",
+                [
+                    "-o", "StrictHostKeyChecking=no",
+                    "-o", "ConnectTimeout=8",
+                    pi_host,
+                    "vcgencmd measure_temp && vcgencmd get_throttled",
+                ],
+                timeout=12,
+                encoding="utf-8",
+                codec_errors="replace",
+            )
+            idx = child.expect(["[pP]assword:", pexpect.EOF, pexpect.TIMEOUT])
+            if idx == 0:
+                child.sendline(pi_pass)
+                child.expect(pexpect.EOF, timeout=10)
+            out = child.before or ""
+            m_temp = re.search(r"temp=([\d\.]+)", out)
+            m_throt = re.search(r"throttled=(0x[0-9a-fA-F]+)", out)
+            if m_temp:
+                temp_c = float(m_temp.group(1))
+                throt = m_throt.group(1) if m_throt else "unknown"
+                if temp_c <= max_temp_c:
+                    print(f"  -> Pi 5 thermal check OK: temp={temp_c:.1f}°C (<= {max_temp_c:.1f}°C), throttled={throt}")
+                    return temp_c
+                print(f"  -> Cooling down Pi 5: temp={temp_c:.1f}°C > {max_temp_c:.1f}°C (throttled={throt}), waiting 6s...")
+                time.sleep(6.0)
+            else:
+                return None
+        except Exception as e:
+            print(f"⚠️ Thermal check warning: {e}")
+            return None
+    print(f"  -> Cooldown timeout ({timeout_s:.0f}s) reached; proceeding with trial.")
+    return None
+
+
 def run_single_trial(backbone_key, cfg, num_layers, run_idx, args, raw_dir, clock_offset=0.0):
     """Runs 1 complete 40-round Pi trial, capturing runtime + FNB58 energy + (if L==12) round accuracy."""
     import pexpect
@@ -349,6 +392,8 @@ def run_single_trial(backbone_key, cfg, num_layers, run_idx, args, raw_dir, cloc
         + (" | [+Accuracy Tracking]" if track_acc else "")
     )
 
+    wait_for_pi_cooldown(args.pi_host, args.pi_pass, max_temp_c=58.0, timeout_s=120.0)
+
     logger_proc = None
     if measure_energy:
         print("  -> Starting live FNB58 power logger on Mac...")
@@ -366,7 +411,7 @@ def run_single_trial(backbone_key, cfg, num_layers, run_idx, args, raw_dir, cloc
             )
 
     pi_cmd = (
-        f"OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 {args.pi_python} -u fl_client.py "
+        f"OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 {args.pi_python} -u fl_client.py "
         f"--embedding_extractor_path {cfg['model']} "
         f"--data_dir {args.data_dir} "
         f"--num_classes {args.num_classes} "

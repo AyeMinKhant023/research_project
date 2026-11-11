@@ -1,8 +1,9 @@
 import os
 # Limit OpenBLAS spin-wait threads for small mini-batch GEMMs on Pi 5:
-# 2 threads is ~10% faster than 4 on (200x512) matrices and cuts peak current from ~2.8A to ~1.7A.
-os.environ.setdefault("OPENBLAS_NUM_THREADS", "2")
-os.environ.setdefault("OMP_NUM_THREADS", "2")
+# 1 thread avoids multi-core spin-wait overhead on (200x512) matrices and cuts training current from ~2.8A to ~1.3A
+# (TFLite CPU feature extraction still uses --num_threads=4 independently).
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
 
 import flwr as fl
 import numpy as np
@@ -225,7 +226,7 @@ class FederatedClient(fl.client.NumPyClient):
                 self.embedding_extractor_path,
             )
             end = time.time()
-            print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.2f} seconds")
+            print(f"[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): {end - start:.4f} seconds")
         else:
             try:
                 from tflite_runtime.interpreter import Interpreter as InterpreterCls
@@ -246,7 +247,7 @@ class FederatedClient(fl.client.NumPyClient):
                 self.embedding_extractor_path,
             )
             end = time.time()
-            print(f"[RUNTIME] Time for Load Feature Extractor (TFLite Interpreter, {self.num_threads} threads): {end - start:.2f} seconds")
+            print(f"[RUNTIME] Time for Load Feature Extractor (TFLite Interpreter, {self.num_threads} threads): {end - start:.4f} seconds")
 
         log_phase_marker("END_LOAD_MODEL")
 
