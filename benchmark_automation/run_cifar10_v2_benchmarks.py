@@ -366,7 +366,7 @@ def run_single_trial(backbone_key, cfg, num_layers, run_idx, args, raw_dir, cloc
             )
 
     pi_cmd = (
-        f"{args.pi_python} -u fl_client.py "
+        f"OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 {args.pi_python} -u fl_client.py "
         f"--embedding_extractor_path {cfg['model']} "
         f"--data_dir {args.data_dir} "
         f"--num_classes {args.num_classes} "
