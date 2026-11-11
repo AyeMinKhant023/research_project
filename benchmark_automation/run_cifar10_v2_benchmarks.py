@@ -1015,13 +1015,27 @@ def main():
                                 with open(res_p, "r") as f:
                                     all_records[prefix][num_layers].append(json.load(f))
                         else:
-                            rec = run_single_trial(
-                                b_key, cfg, num_layers=num_layers, run_idx=r,
-                                args=args, raw_dir=raw_dir, clock_offset=clock_offset,
-                            )
-                            all_records[prefix][num_layers].append(rec)
+                            last_err = None
+                            for attempt in range(1, 4):
+                                try:
+                                    rec = run_single_trial(
+                                        b_key, cfg, num_layers=num_layers, run_idx=r,
+                                        args=args, raw_dir=raw_dir, clock_offset=clock_offset,
+                                    )
+                                    all_records[prefix][num_layers].append(rec)
+                                    last_err = None
+                                    break
+                                except Exception as e:
+                                    last_err = e
+                                    print(f"⚠️ Trial attempt {attempt}/3 failed ({e}). Waiting 15s before retry...")
+                                    time.sleep(15)
+                            if last_err is not None:
+                                generate_all_reports_for_backbone(b_key, all_records, args, model_dir)
+                                raise last_err
                             if r < args.runs and args.cooldown > 0:
                                 time.sleep(args.cooldown)
+                    if not args.replot_only:
+                        generate_all_reports_for_backbone(b_key, all_records, args, model_dir)
 
             generate_all_reports_for_backbone(b_key, all_records, args, model_dir)
 
