@@ -1,0 +1,758 @@
+ayeminkhant@172.20.10.2's password: 
+[PHASE MARKER] START_FL_CLIENT at timestamp 1794431651.880 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[PHASE MARKER] START_LOAD_MODEL at timestamp 1794431651.882 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Load Feature Extractor (EdgeTPU Interpreter)
+  Time: 2.64 sec
+  Peak RAM Usage (psutil): 9.67 MB
+  Absolute Peak RAM Usage (psutil): 467.92 MB
+[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): 2.6443 seconds
+[PHASE MARKER] END_LOAD_MODEL at timestamp 1794431654.532 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Loading local data...
+Reading dir: ./data/cifar10/client1_data/airplane, which has 250 images
+Reading dir: ./data/cifar10/client1_data/automobile, which has 250 images
+Reading dir: ./data/cifar10/client1_data/bird, which has 250 images
+Reading dir: ./data/cifar10/client1_data/cat, which has 250 images
+Reading dir: ./data/cifar10/client1_data/deer, which has 250 images
+Reading dir: ./data/cifar10/client1_data/dog, which has 250 images
+Reading dir: ./data/cifar10/client1_data/frog, which has 250 images
+Reading dir: ./data/cifar10/client1_data/horse, which has 250 images
+Reading dir: ./data/cifar10/client1_data/ship, which has 250 images
+Reading dir: ./data/cifar10/client1_data/truck, which has 250 images
+[PHASE MARKER] START_EXTRACT_FEATURES at timestamp 1794431654.541 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Extracting training embeddings...
+
+[RESOURCE] Usage for Usage for Extract Train Embeddings (Perform)
+  Time: 8.04 sec
+  Peak RAM Usage (psutil): 9.38 MB
+  Absolute Peak RAM Usage (psutil): 478.92 MB
+[RUNTIME] Time for Extract Train Embeddings (Perform): 8.04 seconds
+[PHASE MARKER] END_EXTRACT_FEATURES at timestamp 1794431662.579 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Extracting 250 held-out test embeddings for per-round accuracy tracking...
+[ACCURACY] Test embeddings ready in 1.03s (shape=(250, 1024))
+Client initialized with:
+- Feature dimension: 1024
+- Number of classes: 10
+- Head hidden layers: 12 (width=512)
+- Head parameters: 3,419,146 (weights=3,412,992, biases=6,154)
+- Training samples: 2000
+- Test samples (accuracy tracking): 250
+[PHASE MARKER] START_FEDERATED_LEARNING at timestamp 1794431663.759 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Starting federated learning client, connecting to 172.20.10.3:8080
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: get_parameters message 74a2b5f4-77f4-45af-896d-8f8113549751
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 6e21b113-e6a0-4343-9541-2003f83974b4
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431673.299 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.48 sec
+  Peak RAM Usage (psutil): 17.14 MB
+  Absolute Peak RAM Usage (psutil): 672.91 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431686.782 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 1] Train Head Time: 13.4829 seconds (cumulative: 13.4829s)
+[RUNTIME] Time for  Train Classification Head (Round 1): 13.4829 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message a3d6fce5-7f09-4632-80e2-726be4ae43c5
+[ROUND_METRICS] {"round": 1, "train_loss": 1.289495, "train_acc": 0.5355, "test_loss": 1.586502, "test_acc": 0.476, "round_train_sec": 13.4829, "cum_train_sec": 13.4829}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message f4dce31d-df3c-4265-abca-b3fbe86a7622
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431701.641 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.47 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 653.28 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431715.110 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 2] Train Head Time: 13.4687 seconds (cumulative: 26.9515s)
+[RUNTIME] Time for  Train Classification Head (Round 2): 13.4687 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message c462a337-203a-4d93-b9b8-efc99dbf397f
+[ROUND_METRICS] {"round": 2, "train_loss": 1.209544, "train_acc": 0.5845, "test_loss": 1.535758, "test_acc": 0.492, "round_train_sec": 13.4687, "cum_train_sec": 26.9515}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 9880e580-b9e8-460b-8cf0-4a41899b6782
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431730.361 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.49 sec
+  Peak RAM Usage (psutil): 6.88 MB
+  Absolute Peak RAM Usage (psutil): 682.05 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431743.852 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 3] Train Head Time: 13.4909 seconds (cumulative: 40.4425s)
+[RUNTIME] Time for  Train Classification Head (Round 3): 13.4909 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 4e7e9117-43eb-4b86-94c7-24507b647f21
+[ROUND_METRICS] {"round": 3, "train_loss": 0.591792, "train_acc": 0.8085, "test_loss": 1.262254, "test_acc": 0.6, "round_train_sec": 13.4909, "cum_train_sec": 40.4425}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 899526dc-5ab4-49b7-8441-13bd3afa4cbf
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431760.360 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.46 sec
+  Peak RAM Usage (psutil): 0.02 MB
+  Absolute Peak RAM Usage (psutil): 704.25 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431773.817 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 4] Train Head Time: 13.4568 seconds (cumulative: 53.8992s)
+[RUNTIME] Time for  Train Classification Head (Round 4): 13.4568 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message c2a688dc-d8d5-414a-a9c8-73f3bff464ce
+[ROUND_METRICS] {"round": 4, "train_loss": 0.707759, "train_acc": 0.751, "test_loss": 1.387901, "test_acc": 0.56, "round_train_sec": 13.4568, "cum_train_sec": 53.8992}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 43dd0e41-ba9d-406e-83ab-1c011b1cc13c
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431788.706 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.46 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 718.72 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431802.172 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 5] Train Head Time: 13.4654 seconds (cumulative: 67.3646s)
+[RUNTIME] Time for  Train Classification Head (Round 5): 13.4654 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 3713ae00-f7b9-43f4-8ab2-7a5dd1de500d
+[ROUND_METRICS] {"round": 5, "train_loss": 0.371119, "train_acc": 0.9085, "test_loss": 1.116718, "test_acc": 0.604, "round_train_sec": 13.4654, "cum_train_sec": 67.3646}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 99c133ed-4c3b-452c-b914-35e3ff8595b4
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431816.719 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.46 sec
+  Peak RAM Usage (psutil): 24.27 MB
+  Absolute Peak RAM Usage (psutil): 727.77 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431830.178 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 6] Train Head Time: 13.4586 seconds (cumulative: 80.8232s)
+[RUNTIME] Time for  Train Classification Head (Round 6): 13.4586 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message d5d014ed-4da6-43cc-9db0-bf395ca17e21
+[ROUND_METRICS] {"round": 6, "train_loss": 0.070588, "train_acc": 0.994, "test_loss": 1.35096, "test_acc": 0.652, "round_train_sec": 13.4586, "cum_train_sec": 80.8232}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message b48326f6-200d-413c-bebd-3f3bb2e100f6
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431845.295 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.43 sec
+  Peak RAM Usage (psutil): 16.88 MB
+  Absolute Peak RAM Usage (psutil): 740.31 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431858.730 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 7] Train Head Time: 13.4346 seconds (cumulative: 94.2578s)
+[RUNTIME] Time for  Train Classification Head (Round 7): 13.4346 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message fdb7d3e1-ad3e-4867-ab0e-aadb5c6e15f3
+[ROUND_METRICS] {"round": 7, "train_loss": 0.018056, "train_acc": 1.0, "test_loss": 1.548639, "test_acc": 0.636, "round_train_sec": 13.4346, "cum_train_sec": 94.2578}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 82ee88a8-7573-4e3f-bb67-2c6ff2dc2f62
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431874.629 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.39 sec
+  Peak RAM Usage (psutil): 21.00 MB
+  Absolute Peak RAM Usage (psutil): 756.62 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431888.021 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 8] Train Head Time: 13.3915 seconds (cumulative: 107.6493s)
+[RUNTIME] Time for  Train Classification Head (Round 8): 13.3915 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message b1188185-87fa-4fe5-a552-4a40097cde3f
+[ROUND_METRICS] {"round": 8, "train_loss": 0.009165, "train_acc": 1.0, "test_loss": 1.676875, "test_acc": 0.64, "round_train_sec": 13.3915, "cum_train_sec": 107.6493}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message e76096cc-61b5-499b-be9d-56bf2755d874
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431902.657 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.45 sec
+  Peak RAM Usage (psutil): 26.00 MB
+  Absolute Peak RAM Usage (psutil): 767.77 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431916.108 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 9] Train Head Time: 13.4511 seconds (cumulative: 121.1004s)
+[RUNTIME] Time for  Train Classification Head (Round 9): 13.4511 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 7e8a46c5-1b4a-4b05-87f1-5a859eb48a66
+[ROUND_METRICS] {"round": 9, "train_loss": 0.005902, "train_acc": 1.0, "test_loss": 1.773262, "test_acc": 0.64, "round_train_sec": 13.4511, "cum_train_sec": 121.1004}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message a1fbaf4a-d8ab-4de3-9caf-af552183bf96
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431932.309 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.45 sec
+  Peak RAM Usage (psutil): 17.00 MB
+  Absolute Peak RAM Usage (psutil): 782.66 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431945.755 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 10] Train Head Time: 13.4462 seconds (cumulative: 134.5466s)
+[RUNTIME] Time for  Train Classification Head (Round 10): 13.4462 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 24c18bb7-874e-40c1-a40e-0840758718fe
+[ROUND_METRICS] {"round": 10, "train_loss": 0.004216, "train_acc": 1.0, "test_loss": 1.815128, "test_acc": 0.64, "round_train_sec": 13.4462, "cum_train_sec": 134.5466}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 15ab640e-cc44-4dcd-ab15-435be9b8b088
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431961.444 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.44 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 781.42 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794431974.889 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 11] Train Head Time: 13.4443 seconds (cumulative: 147.9908s)
+[RUNTIME] Time for  Train Classification Head (Round 11): 13.4443 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 40f0bb7f-9155-49b2-96fc-86600c31aef4
+[ROUND_METRICS] {"round": 11, "train_loss": 0.003302, "train_acc": 1.0, "test_loss": 1.860465, "test_acc": 0.64, "round_train_sec": 13.4443, "cum_train_sec": 147.9908}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 2a5b02c5-163a-4948-b2fd-206396408882
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794431989.693 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.47 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 781.45 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432003.168 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 12] Train Head Time: 13.4742 seconds (cumulative: 161.4650s)
+[RUNTIME] Time for  Train Classification Head (Round 12): 13.4742 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 0a3a4cb7-84f4-4efd-815f-c88ab1d84a45
+[ROUND_METRICS] {"round": 12, "train_loss": 0.002606, "train_acc": 1.0, "test_loss": 1.921975, "test_acc": 0.636, "round_train_sec": 13.4742, "cum_train_sec": 161.465}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 2a0d2cca-7cfb-4cf4-bccf-45517cbc0774
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432017.613 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.46 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 781.67 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432031.075 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 13] Train Head Time: 13.4618 seconds (cumulative: 174.9268s)
+[RUNTIME] Time for  Train Classification Head (Round 13): 13.4618 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 31105830-0216-4dac-b4d8-99084c85ad50
+[ROUND_METRICS] {"round": 13, "train_loss": 0.00215, "train_acc": 1.0, "test_loss": 1.961847, "test_acc": 0.64, "round_train_sec": 13.4618, "cum_train_sec": 174.9268}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message bc81cb77-fedc-4e45-bde3-6d3e3ad41c1d
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432047.748 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.44 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 781.75 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432061.186 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 14] Train Head Time: 13.4378 seconds (cumulative: 188.3646s)
+[RUNTIME] Time for  Train Classification Head (Round 14): 13.4378 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message feed90f0-1022-4f7e-9a50-b2040a184774
+[ROUND_METRICS] {"round": 14, "train_loss": 0.00183, "train_acc": 1.0, "test_loss": 1.990651, "test_acc": 0.644, "round_train_sec": 13.4378, "cum_train_sec": 188.3646}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 8e6fabf2-8438-4e0e-bf9b-38f06f6b4539
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432075.038 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.44 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 781.75 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432088.480 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 15] Train Head Time: 13.4415 seconds (cumulative: 201.8062s)
+[RUNTIME] Time for  Train Classification Head (Round 15): 13.4415 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 42ac15fd-dc63-4a31-a7bd-ab56cffc0c48
+[ROUND_METRICS] {"round": 15, "train_loss": 0.001588, "train_acc": 1.0, "test_loss": 2.019025, "test_acc": 0.644, "round_train_sec": 13.4415, "cum_train_sec": 201.8062}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message cdf25a6b-7020-4fb8-9bf2-6ba1862c9343
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432102.049 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.45 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 783.59 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432115.502 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 16] Train Head Time: 13.4523 seconds (cumulative: 215.2584s)
+[RUNTIME] Time for  Train Classification Head (Round 16): 13.4523 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 0453079e-9242-4633-9445-b1d6325e2b2c
+[ROUND_METRICS] {"round": 16, "train_loss": 0.001396, "train_acc": 1.0, "test_loss": 2.044873, "test_acc": 0.644, "round_train_sec": 13.4523, "cum_train_sec": 215.2584}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message fdf1b8fc-1035-4bef-8c10-a8b715e28d8f
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432129.466 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.43 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 799.12 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432142.900 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 17] Train Head Time: 13.4346 seconds (cumulative: 228.6930s)
+[RUNTIME] Time for  Train Classification Head (Round 17): 13.4346 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 080bd617-4780-4eb1-a1f7-42b0b8af002b
+[ROUND_METRICS] {"round": 17, "train_loss": 0.001247, "train_acc": 1.0, "test_loss": 2.069302, "test_acc": 0.64, "round_train_sec": 13.4346, "cum_train_sec": 228.693}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message c54e0848-42e8-4cd6-8f56-1fd21721a639
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432156.464 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.44 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 807.05 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432169.906 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 18] Train Head Time: 13.4414 seconds (cumulative: 242.1344s)
+[RUNTIME] Time for  Train Classification Head (Round 18): 13.4414 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message ff6f4f7c-0919-406e-b419-2ca587042a4a
+[ROUND_METRICS] {"round": 18, "train_loss": 0.001116, "train_acc": 1.0, "test_loss": 2.097457, "test_acc": 0.636, "round_train_sec": 13.4414, "cum_train_sec": 242.1344}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 19fa3b61-0d88-4861-bf82-2786165194fb
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432183.760 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.43 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 788.12 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432197.190 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 19] Train Head Time: 13.4302 seconds (cumulative: 255.5646s)
+[RUNTIME] Time for  Train Classification Head (Round 19): 13.4302 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 2ba655bd-7ebc-40cb-9812-126bb5b21142
+[ROUND_METRICS] {"round": 19, "train_loss": 0.001013, "train_acc": 1.0, "test_loss": 2.112301, "test_acc": 0.636, "round_train_sec": 13.4302, "cum_train_sec": 255.5646}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message c6a53692-31f5-4817-8147-87c0c7805b3b
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432211.867 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.38 sec
+  Peak RAM Usage (psutil): 1.88 MB
+  Absolute Peak RAM Usage (psutil): 781.61 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432225.251 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 20] Train Head Time: 13.3838 seconds (cumulative: 268.9485s)
+[RUNTIME] Time for  Train Classification Head (Round 20): 13.3838 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 38d7a54d-3843-4526-81af-a05da7e6ceb0
+[ROUND_METRICS] {"round": 20, "train_loss": 0.000926, "train_acc": 1.0, "test_loss": 2.129259, "test_acc": 0.644, "round_train_sec": 13.3838, "cum_train_sec": 268.9485}
+[92mINFO [0m:      Sent reply
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432241.918 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message dd3abc4b-761f-4cb4-a500-a05a22f53db0
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.44 sec
+  Peak RAM Usage (psutil): 14.27 MB
+  Absolute Peak RAM Usage (psutil): 794.11 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432255.356 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 21] Train Head Time: 13.4371 seconds (cumulative: 282.3856s)
+[RUNTIME] Time for  Train Classification Head (Round 21): 13.4371 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message ee163e4a-84bc-4710-a00b-fe94386b145f
+[ROUND_METRICS] {"round": 21, "train_loss": 0.000851, "train_acc": 1.0, "test_loss": 2.148991, "test_acc": 0.64, "round_train_sec": 13.4371, "cum_train_sec": 282.3856}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 85d4fc11-3444-4dd9-9772-762de2ad1982
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432270.668 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.47 sec
+  Peak RAM Usage (psutil): 17.00 MB
+  Absolute Peak RAM Usage (psutil): 809.77 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432284.143 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 22] Train Head Time: 13.4740 seconds (cumulative: 295.8596s)
+[RUNTIME] Time for  Train Classification Head (Round 22): 13.4740 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message f614b6e1-71a0-4377-9cf4-14b8ec99ea0b
+[ROUND_METRICS] {"round": 22, "train_loss": 0.000786, "train_acc": 1.0, "test_loss": 2.173241, "test_acc": 0.64, "round_train_sec": 13.474, "cum_train_sec": 295.8596}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message c37ffe6a-e77f-4bb4-8687-c0d2fd8353a2
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432299.178 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.44 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 805.17 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432312.623 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 23] Train Head Time: 13.4445 seconds (cumulative: 309.3042s)
+[RUNTIME] Time for  Train Classification Head (Round 23): 13.4445 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message d7fdea4e-2823-4069-93c3-c3337fc53452
+[ROUND_METRICS] {"round": 23, "train_loss": 0.000732, "train_acc": 1.0, "test_loss": 2.19179, "test_acc": 0.64, "round_train_sec": 13.4445, "cum_train_sec": 309.3042}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 2cf4ddd2-4820-4078-b8df-bc2fb0d642df
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432327.689 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.43 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 805.02 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432341.120 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 24] Train Head Time: 13.4310 seconds (cumulative: 322.7351s)
+[RUNTIME] Time for  Train Classification Head (Round 24): 13.4310 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 0952b103-b139-4a22-ba15-53cdd0b51490
+[ROUND_METRICS] {"round": 24, "train_loss": 0.000681, "train_acc": 1.0, "test_loss": 2.197849, "test_acc": 0.636, "round_train_sec": 13.431, "cum_train_sec": 322.7351}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message e60bef42-538e-4fd0-89f3-9f7259945c9b
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432355.807 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.44 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 804.86 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432369.252 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 25] Train Head Time: 13.4442 seconds (cumulative: 336.1794s)
+[RUNTIME] Time for  Train Classification Head (Round 25): 13.4442 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message f76551b3-2c40-4812-965b-28ae25a115ce
+[ROUND_METRICS] {"round": 25, "train_loss": 0.000638, "train_acc": 1.0, "test_loss": 2.215229, "test_acc": 0.64, "round_train_sec": 13.4442, "cum_train_sec": 336.1794}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 772e2989-bf06-4088-9827-7f2027d61291
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432383.597 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.42 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 804.95 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432397.018 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 26] Train Head Time: 13.4205 seconds (cumulative: 349.5999s)
+[RUNTIME] Time for  Train Classification Head (Round 26): 13.4205 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 1333d9ea-4f98-4618-a9ce-2a76cb045a0f
+[ROUND_METRICS] {"round": 26, "train_loss": 0.000599, "train_acc": 1.0, "test_loss": 2.229271, "test_acc": 0.636, "round_train_sec": 13.4205, "cum_train_sec": 349.5999}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 3aaff896-c7c7-4191-9554-7d137ec8d90b
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432411.781 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.43 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 805.44 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432425.214 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 27] Train Head Time: 13.4332 seconds (cumulative: 363.0331s)
+[RUNTIME] Time for  Train Classification Head (Round 27): 13.4332 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 1a7d0997-6816-43d6-8e7b-0d6d881ec4ab
+[ROUND_METRICS] {"round": 27, "train_loss": 0.000563, "train_acc": 1.0, "test_loss": 2.245678, "test_acc": 0.636, "round_train_sec": 13.4332, "cum_train_sec": 363.0331}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 02148c40-41d4-4fc6-94da-9c07249f2526
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432439.800 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.47 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 805.02 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432453.272 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 28] Train Head Time: 13.4722 seconds (cumulative: 376.5053s)
+[RUNTIME] Time for  Train Classification Head (Round 28): 13.4722 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 82c1ab00-f448-4b87-96f1-4ecba0f9c2e8
+[ROUND_METRICS] {"round": 28, "train_loss": 0.000532, "train_acc": 1.0, "test_loss": 2.249573, "test_acc": 0.636, "round_train_sec": 13.4722, "cum_train_sec": 376.5053}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message d7d3431f-cb1b-4c85-b7d2-51ca10764efd
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432467.994 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.45 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 817.86 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432481.441 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 29] Train Head Time: 13.4473 seconds (cumulative: 389.9526s)
+[RUNTIME] Time for  Train Classification Head (Round 29): 13.4473 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message bbaafeda-4b2f-4171-8462-209238ac2f63
+[ROUND_METRICS] {"round": 29, "train_loss": 0.000503, "train_acc": 1.0, "test_loss": 2.264837, "test_acc": 0.636, "round_train_sec": 13.4473, "cum_train_sec": 389.9526}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message b93f2d25-c336-485f-b004-bbf18ce73b47
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432496.137 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.45 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 825.12 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432509.592 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 30] Train Head Time: 13.4548 seconds (cumulative: 403.4074s)
+[RUNTIME] Time for  Train Classification Head (Round 30): 13.4548 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message cbe49cb6-ca4e-421d-8fac-47bcc7f92bb3
+[ROUND_METRICS] {"round": 30, "train_loss": 0.000479, "train_acc": 1.0, "test_loss": 2.279291, "test_acc": 0.636, "round_train_sec": 13.4548, "cum_train_sec": 403.4074}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message fe2de435-3915-47f6-985e-84003709fc50
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432525.645 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.45 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 805.47 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432539.094 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 31] Train Head Time: 13.4492 seconds (cumulative: 416.8566s)
+[RUNTIME] Time for  Train Classification Head (Round 31): 13.4492 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 405877b0-b51a-4f64-b3e9-624a9309dfcd
+[ROUND_METRICS] {"round": 31, "train_loss": 0.000455, "train_acc": 1.0, "test_loss": 2.293939, "test_acc": 0.636, "round_train_sec": 13.4492, "cum_train_sec": 416.8566}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 042cacc1-d20e-4fc0-9ed6-90fa32203700
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432556.078 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.42 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 816.95 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432569.502 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 32] Train Head Time: 13.4233 seconds (cumulative: 430.2799s)
+[RUNTIME] Time for  Train Classification Head (Round 32): 13.4233 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message bdcb1ed1-b76c-4c60-9c07-517796f18703
+[ROUND_METRICS] {"round": 32, "train_loss": 0.000433, "train_acc": 1.0, "test_loss": 2.304516, "test_acc": 0.636, "round_train_sec": 13.4233, "cum_train_sec": 430.2799}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message c8513712-dc11-4bcd-9e10-bc93f0b9d9d2
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432585.207 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.42 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 827.98 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432598.625 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 33] Train Head Time: 13.4181 seconds (cumulative: 443.6981s)
+[RUNTIME] Time for  Train Classification Head (Round 33): 13.4181 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message d21797fc-db8a-4605-ae37-dff5e649cce2
+[ROUND_METRICS] {"round": 33, "train_loss": 0.000413, "train_acc": 1.0, "test_loss": 2.309956, "test_acc": 0.632, "round_train_sec": 13.4181, "cum_train_sec": 443.6981}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 4e6d96f9-a8bc-461a-8478-7ef081eb0593
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432614.814 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.45 sec
+  Peak RAM Usage (psutil): 22.88 MB
+  Absolute Peak RAM Usage (psutil): 831.56 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432628.260 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 34] Train Head Time: 13.4461 seconds (cumulative: 457.1442s)
+[RUNTIME] Time for  Train Classification Head (Round 34): 13.4461 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 67f1cd51-968f-4e76-95b1-b8752929276d
+[ROUND_METRICS] {"round": 34, "train_loss": 0.000396, "train_acc": 1.0, "test_loss": 2.321857, "test_acc": 0.632, "round_train_sec": 13.4461, "cum_train_sec": 457.1442}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 73a351b6-f370-4129-a6f6-20413d45cd39
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432643.851 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.47 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 830.59 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432657.323 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 35] Train Head Time: 13.4725 seconds (cumulative: 470.6167s)
+[RUNTIME] Time for  Train Classification Head (Round 35): 13.4725 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message ab386bac-743b-42ac-b020-865acb42bf90
+[ROUND_METRICS] {"round": 35, "train_loss": 0.000379, "train_acc": 1.0, "test_loss": 2.324302, "test_acc": 0.632, "round_train_sec": 13.4725, "cum_train_sec": 470.6167}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 36dcf911-8aed-4a3b-824c-735a9c4a4eba
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432671.796 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.46 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 830.58 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432685.254 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 36] Train Head Time: 13.4577 seconds (cumulative: 484.0744s)
+[RUNTIME] Time for  Train Classification Head (Round 36): 13.4577 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 9d7abd38-3309-415e-9243-be0085788027
+[ROUND_METRICS] {"round": 36, "train_loss": 0.000364, "train_acc": 1.0, "test_loss": 2.33697, "test_acc": 0.632, "round_train_sec": 13.4577, "cum_train_sec": 484.0744}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 7eec04fe-ed26-490a-92b9-5e473ead121a
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432699.541 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.45 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 830.72 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432712.988 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 37] Train Head Time: 13.4464 seconds (cumulative: 497.5208s)
+[RUNTIME] Time for  Train Classification Head (Round 37): 13.4464 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 154e17c1-d2a4-4357-a031-d04a0cf20245
+[ROUND_METRICS] {"round": 37, "train_loss": 0.000349, "train_acc": 1.0, "test_loss": 2.345469, "test_acc": 0.632, "round_train_sec": 13.4464, "cum_train_sec": 497.5208}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 88f1281b-5976-4352-9330-4ce82aa25d73
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432727.131 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.43 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 830.58 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432740.559 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 38] Train Head Time: 13.4275 seconds (cumulative: 510.9483s)
+[RUNTIME] Time for  Train Classification Head (Round 38): 13.4275 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 9b3dffb6-23c0-45a9-b8fb-fc9cf3bc897b
+[ROUND_METRICS] {"round": 38, "train_loss": 0.000336, "train_acc": 1.0, "test_loss": 2.35466, "test_acc": 0.632, "round_train_sec": 13.4275, "cum_train_sec": 510.9483}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message 7ad593cb-2ea9-4e37-9cc1-3eabdc93f3a0
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432754.794 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.47 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 830.58 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432768.261 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 39] Train Head Time: 13.4660 seconds (cumulative: 524.4143s)
+[RUNTIME] Time for  Train Classification Head (Round 39): 13.4660 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message bd5f4159-2d3c-4733-b361-3eb40b8a1b97
+[ROUND_METRICS] {"round": 39, "train_loss": 0.000324, "train_acc": 1.0, "test_loss": 2.364635, "test_acc": 0.636, "round_train_sec": 13.466, "cum_train_sec": 524.4143}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message d712b81d-8efe-4c19-954a-b06f465ef679
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794432784.162 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 13.42 sec
+  Peak RAM Usage (psutil): 0.00 MB
+  Absolute Peak RAM Usage (psutil): 834.47 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794432797.580 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 40] Train Head Time: 13.4171 seconds (cumulative: 537.8314s)
+[RUNTIME] Time for  Train Classification Head (Round 40): 13.4171 seconds
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 99a63c15-4bff-4607-97b1-85855ba147e2
+[ROUND_METRICS] {"round": 40, "train_loss": 0.000312, "train_acc": 1.0, "test_loss": 2.371325, "test_acc": 0.632, "round_train_sec": 13.4171, "cum_train_sec": 537.8314}
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message ede7ff62-8786-4edf-a397-86984ea6e37b
+[92mINFO [0m:      Disconnect and shut down
+[PHASE MARKER] END_FEDERATED_LEARNING at timestamp 1794432807.429 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RUNTIME] Time for  Train Classification Head: 537.8314 seconds (40 rounds total, avg 13.4458s/round)
+[ACCURACY] Final Round 40: Train Acc = 1.0000, Test Acc = 0.6320, Test Loss = 2.3713
+[PHASE MARKER] END_FL_CLIENT at timestamp 1794432807.436 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[RUNTIME] Total Runtime (Full Client Run): 1155.56 seconds
