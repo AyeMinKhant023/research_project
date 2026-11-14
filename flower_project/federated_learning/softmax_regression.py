@@ -1,8 +1,9 @@
 import numpy as np
 # import tensorflow as tf (imported lazily below)
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 import tempfile
 import os
+import random
 
 
 class SoftmaxRegression:
@@ -12,7 +13,7 @@ class SoftmaxRegression:
     easily converted to TensorFlow Lite format.
     """
     
-    def __init__(self, feature_dim: int, num_classes: int, weight_scale: float = 0.01, reg: float = 0.0):
+    def __init__(self, feature_dim: int, num_classes: int, weight_scale: float = 0.01, reg: float = 0.0, seed: Optional[int] = 42):
         """Initialize the softmax regression model.
         
         Args:
@@ -20,11 +21,17 @@ class SoftmaxRegression:
             num_classes: The number of output classes
             weight_scale: Scale factor for weight initialization
             reg: L2 regularization strength
+            seed: Optional random seed for deterministic weight initialization
         """
         self.feature_dim = feature_dim
         self.num_classes = num_classes
         self.weight_scale = weight_scale
         self.reg = reg
+        self.seed = seed
+
+        if seed is not None and seed >= 0:
+            random.seed(seed)
+            np.random.seed(seed)
         
         # Initialize weights and biases
         self.weights = np.random.normal(0, weight_scale, (feature_dim, num_classes)).astype(np.float32)
@@ -145,7 +152,8 @@ class SoftmaxRegression:
         return np.mean(predictions == y)
     
     def train_with_sgd(self, data: Dict[str, np.ndarray], num_iter: int, 
-                       learning_rate: float, batch_size: int = 100, print_every: int = 100):
+                       learning_rate: float, batch_size: int = 100, print_every: int = 100,
+                       seed: Optional[int] = None):
         """Train the model using stochastic gradient descent.
         
         Args:
@@ -154,7 +162,12 @@ class SoftmaxRegression:
             learning_rate: Learning rate for SGD
             batch_size: Batch size for mini-batch SGD
             print_every: Print stats every N iterations (0 to disable)
+            seed: Optional random seed for deterministic mini-batch sampling
         """
+        if seed is not None and seed >= 0:
+            random.seed(seed)
+            np.random.seed(seed)
+
         X_train = data['data_train']
         y_train = data['labels_train']
         X_val = data['data_val']
@@ -307,13 +320,19 @@ class MLPClassificationHead:
     activations and a Softmax output layer.
     """
     def __init__(self, feature_dim: int, num_classes: int, num_hidden_layers: int = 0, 
-                 hidden_dim: int = 256, weight_scale: float = None, reg: float = 0.0):
+                 hidden_dim: int = 256, weight_scale: float = None, reg: float = 0.0,
+                 seed: Optional[int] = 42):
         self.feature_dim = feature_dim
         self.num_classes = num_classes
         self.num_hidden_layers = num_hidden_layers
         self.hidden_dim = hidden_dim
         self.weight_scale = weight_scale
         self.reg = reg
+        self.seed = seed
+
+        if seed is not None and seed >= 0:
+            random.seed(seed)
+            np.random.seed(seed)
 
         dims = [feature_dim]
         for _ in range(num_hidden_layers):
@@ -447,7 +466,12 @@ class MLPClassificationHead:
         return float(np.mean(predictions == y))
 
     def train_with_sgd(self, data: Dict[str, np.ndarray], num_iter: int, 
-                       learning_rate: float, batch_size: int = 100, print_every: int = 0):
+                       learning_rate: float, batch_size: int = 100, print_every: int = 0,
+                       seed: Optional[int] = None):
+        if seed is not None and seed >= 0:
+            random.seed(seed)
+            np.random.seed(seed)
+
         X_train = data['data_train']
         y_train = data['labels_train']
         n_train = X_train.shape[0]
@@ -471,7 +495,9 @@ class MLPClassificationHead:
 
 
 def create_classification_head(feature_dim: int, num_classes: int, num_head_layers: int = 0,
-                               hidden_dim: int = 256, weight_scale: float = None, reg: float = 0.0):
+                               hidden_dim: int = 256, weight_scale: float = None, reg: float = 0.0,
+                               seed: Optional[int] = 42):
     """Factory to create classification head (0 layers = SoftmaxRegression baseline, N = MLP with ReLU)."""
     return MLPClassificationHead(feature_dim, num_classes, num_hidden_layers=num_head_layers,
-                                 hidden_dim=hidden_dim, weight_scale=weight_scale, reg=reg)
+                                 hidden_dim=hidden_dim, weight_scale=weight_scale, reg=reg,
+                                 seed=seed)

@@ -14,6 +14,7 @@ if importlib.util.find_spec("tflite_runtime") is not None:
 
 import flwr as fl
 import numpy as np
+import random
 import csv
 import json
 import time
@@ -80,6 +81,8 @@ def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1, se
     image_paths = np.array(image_paths)
     labels = np.array(labels)
     if seed is not None and seed >= 0:
+        random.seed(seed)
+        np.random.seed(seed)
         rng = np.random.default_rng(seed)
         perm = rng.permutation(image_paths.shape[0])
     else:
@@ -201,8 +204,12 @@ class FederatedClient(fl.client.NumPyClient):
         self.local_epochs = local_epochs
         self.track_accuracy = track_accuracy
         self.accuracy_csv = accuracy_csv
-        self.seed = seed
+        self.seed = seed if (seed is not None and seed >= 0) else None
         self.is_edgetpu = "edgetpu" in os.path.basename(self.embedding_extractor_path).lower()
+
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
 
         self.test_embeddings = None
         self.test_labels = None
@@ -264,6 +271,9 @@ class FederatedClient(fl.client.NumPyClient):
         self.load_data()
 
         # Initialize head (0 layers = linear Softmax baseline, >0 = MLP with ReLU hidden layers)
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
         self.feature_dim = self.train_embeddings.shape[1]
         self.head = create_classification_head(
             self.feature_dim,
@@ -272,6 +282,7 @@ class FederatedClient(fl.client.NumPyClient):
             hidden_dim=self.hidden_dim,
             weight_scale=None,
             reg=0.0,
+            seed=self.seed,
         )
         p_counts = self.head.count_parameters()
 
@@ -353,6 +364,7 @@ class FederatedClient(fl.client.NumPyClient):
         log_phase_marker("START_TRAIN_HEAD")
 
         start = time.time()
+        round_seed = (self.seed + int(server_round)) if self.seed is not None else None
         log_resource_usage(
             "Usage for Train Classification Head",
             self.head.train_with_sgd,
@@ -360,6 +372,7 @@ class FederatedClient(fl.client.NumPyClient):
             num_iter,
             learning_rate,
             batch_size=batch_size,
+            seed=round_seed,
         )
         end = time.time()
         round_t = end - start
@@ -489,6 +502,7 @@ def main():
             num_iter=num_iter,
             learning_rate=1e-2,
             batch_size=batch_size,
+            seed=client.seed,
         )
         end = time.time()
         train_sec = end - start

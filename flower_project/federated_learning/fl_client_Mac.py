@@ -1,5 +1,6 @@
 import flwr as fl
 import numpy as np
+import random
 import os
 import time
 from PIL import Image
@@ -18,18 +19,19 @@ def test_image(path):
 
 
 def get_image_paths(data_dir):
-    """Walks through data_dir and returns list of image paths and label map."""
+    """Walks through data_dir in deterministic sorted order and returns image paths and label map."""
     classes = None
     image_paths = []
     labels = []
 
     class_idx = 0
     for root, dirs, files in os.walk(data_dir):
+        dirs[:] = sorted(d for d in dirs if not d.startswith('.'))
         if root == data_dir:
-            classes = dirs
+            classes = list(dirs)
         else:
             assert classes[class_idx] in root
-            valid_files = [f for f in files if not f.startswith('.')]
+            valid_files = sorted(f for f in files if not f.startswith('.'))
             print('Reading dir: %s, which has %d images' % (root, len(valid_files)))
             for img_name in valid_files:
                 image_paths.append(os.path.join(root, img_name))
@@ -39,11 +41,17 @@ def get_image_paths(data_dir):
     return image_paths, labels, dict(zip(range(class_idx), classes))
 
 
-def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1):
+def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1, seed: Optional[int] = 42):
     """Shuffles and splits data into train, validation, and test sets."""
     image_paths = np.array(image_paths)
     labels = np.array(labels)
-    perm = np.random.permutation(image_paths.shape[0])
+    if seed is not None and seed >= 0:
+        random.seed(seed)
+        np.random.seed(seed)
+        rng = np.random.default_rng(seed)
+        perm = rng.permutation(image_paths.shape[0])
+    else:
+        perm = np.random.permutation(image_paths.shape[0])
     image_paths = image_paths[perm]
     labels = labels[perm]
 
@@ -216,13 +224,18 @@ def extract_embeddings_saved_model(image_paths, model, input_size):
 class FederatedClient(fl.client.NumPyClient):
     def __init__(self, embedding_extractor_path: str, data_dir: str, num_classes: int, 
                  input_size: Tuple[int, int] = (224, 224), num_head_layers: int = 0,
-                 hidden_dim: int = 512):
+                 hidden_dim: int = 512, seed: int = 42):
         self.embedding_extractor_path = embedding_extractor_path
         self.data_dir = data_dir
         self.num_classes = num_classes
         self.input_size = input_size
         self.num_head_layers = num_head_layers
         self.hidden_dim = hidden_dim
+        self.seed = seed if (seed is not None and seed >= 0) else None
+
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
         
         # Initialize the backbone (embedding extractor) - this stays frozen
         self.load_model()
@@ -231,6 +244,9 @@ class FederatedClient(fl.client.NumPyClient):
         self.load_data()
         
         # Initialize head
+        if self.seed is not None:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
         self.feature_dim = self.train_embeddings.shape[1]
         self.head = create_classification_head(
             self.feature_dim, 
@@ -238,7 +254,8 @@ class FederatedClient(fl.client.NumPyClient):
             num_head_layers=self.num_head_layers,
             hidden_dim=self.hidden_dim,
             weight_scale=None, 
-            reg=0.0
+            reg=0.0,
+            seed=self.seed
         )
         
         print(f"Client initialized with:")
@@ -286,7 +303,7 @@ class FederatedClient(fl.client.NumPyClient):
         """Load and preprocess local data."""
         print("Loading local data...")
         image_paths, labels, label_map = get_image_paths(self.data_dir)
-        train_and_val_dataset, test_dataset = shuffle_and_split(image_paths, labels)
+        train_and_val_dataset, test_dataset = shuffle_and_split(image_paths, labels, seed=self.seed)
         
         ##########################################################################################
 
@@ -348,6 +365,8 @@ class FederatedClient(fl.client.NumPyClient):
         learning_rate = config.get("learning_rate", 1e-2)
         batch_size = config.get("batch_size", 100)
         num_iter = config.get("num_iter", 100)  # Reduced for federated setting
+        server_round = config.get("server_round", 1)
+        round_seed = (self.seed + int(server_round)) if self.seed is not None else None
         
         print(f"Starting local training with lr={learning_rate}, batch_size={batch_size}, num_iter={num_iter}")
         
@@ -358,7 +377,8 @@ class FederatedClient(fl.client.NumPyClient):
             self.dataset, 
             num_iter, 
             learning_rate, 
-            batch_size=batch_size
+            batch_size=batch_size,
+            seed=round_seed
         )
         end = time.time() #
         print(f"Time to train classification head: {end - start:.2f} seconds") #
@@ -398,6 +418,8 @@ def main():
                        help="Hidden layer width in classification head (default: 512)")
     parser.add_argument("--input_size", type=int, nargs=2, default=[224, 224],
                        help="Input image size (height width) (default: 224 224)")
+    parser.add_argument("--seed", type=int, default=42,
+                       help="Random seed for deterministic split, init, and SGD (-1 for non-deterministic)")
     
     args = parser.parse_args()
     
@@ -409,6 +431,7 @@ def main():
         input_size=tuple(args.input_size),
         num_head_layers=args.num_head_layers,
         hidden_dim=args.hidden_dim,
+        seed=args.seed,
     )
     
     # Start federated learning

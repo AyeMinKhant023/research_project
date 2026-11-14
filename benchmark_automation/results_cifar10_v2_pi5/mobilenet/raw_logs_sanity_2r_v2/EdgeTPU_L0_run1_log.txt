@@ -1,0 +1,112 @@
+ayeminkhant@172.20.10.4's password: 
+[PHASE MARKER] START_FL_CLIENT at timestamp 1794680901.684 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[PHASE MARKER] START_LOAD_MODEL at timestamp 1794680901.685 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RESOURCE] Usage for Usage for Load Feature Extractor (EdgeTPU Interpreter)
+  Time: 4.81 sec
+  Peak RAM Usage (psutil): 10.00 MB
+  Absolute Peak RAM Usage (psutil): 82.64 MB
+[RUNTIME] Time for Load Feature Extractor (EdgeTPU Interpreter): 4.8133 seconds
+[PHASE MARKER] END_LOAD_MODEL at timestamp 1794680906.818 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Loading local data...
+Reading dir: ./data/cifar10/client1_data/airplane, which has 250 images
+Reading dir: ./data/cifar10/client1_data/automobile, which has 250 images
+Reading dir: ./data/cifar10/client1_data/bird, which has 250 images
+Reading dir: ./data/cifar10/client1_data/cat, which has 250 images
+Reading dir: ./data/cifar10/client1_data/deer, which has 250 images
+Reading dir: ./data/cifar10/client1_data/dog, which has 250 images
+Reading dir: ./data/cifar10/client1_data/frog, which has 250 images
+Reading dir: ./data/cifar10/client1_data/horse, which has 250 images
+Reading dir: ./data/cifar10/client1_data/ship, which has 250 images
+Reading dir: ./data/cifar10/client1_data/truck, which has 250 images
+[PHASE MARKER] START_EXTRACT_FEATURES at timestamp 1794680906.834 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Extracting training embeddings...
+
+[RESOURCE] Usage for Usage for Extract Train Embeddings (Perform)
+  Time: 8.26 sec
+  Peak RAM Usage (psutil): 9.33 MB
+  Absolute Peak RAM Usage (psutil): 93.59 MB
+[RUNTIME] Time for Extract Train Embeddings (Perform): 8.27 seconds
+[PHASE MARKER] END_EXTRACT_FEATURES at timestamp 1794680915.099 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Extracting 250 held-out test embeddings for per-round accuracy tracking...
+[ACCURACY] Test embeddings ready in 1.04s (shape=(250, 1024))
+Client initialized with:
+- Feature dimension: 1024
+- Number of classes: 10
+- Head hidden layers: 0 (width=512)
+- Head parameters: 10,250 (weights=10,240, biases=10)
+- Training samples: 2000
+- Test samples (accuracy tracking): 250
+[PHASE MARKER] START_FEDERATED_LEARNING at timestamp 1794680916.137 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+Starting federated learning client, connecting to 172.20.10.3:8080
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_numpy_client() is deprecated. 
+	Instead, use `flwr.client.start_client()` by ensuring you first call the `.to_client()` method as shown below: 
+	flwr.client.start_client(
+		server_address='<IP>:<PORT>',
+		client=FlowerClient().to_client(), # <-- where FlowerClient is of type flwr.client.NumPyClient object
+	)
+	Using `start_numpy_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[93mWARNING [0m:   DEPRECATED FEATURE: flwr.client.start_client() is deprecated.
+	Instead, use the `flower-supernode` CLI command to start a SuperNode as shown below:
+
+		$ flower-supernode --insecure --superlink='<IP>:<PORT>'
+
+	To view all available options, run:
+
+		$ flower-supernode --help
+
+	Using `start_client()` is deprecated.
+
+            This is a deprecated feature. It will be removed
+            entirely in future versions of Flower.
+        
+[92mINFO [0m:      
+[92mINFO [0m:      Received: get_parameters message b2e52705-1af7-474e-92b9-ad918911ee98
+[92mINFO [0m:      Sent reply
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794680916.292 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message becf8f63-a4fa-4286-a5a4-f9bae5e899c3
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 0.11 sec
+  Peak RAM Usage (psutil): 0.06 MB
+  Absolute Peak RAM Usage (psutil): 101.41 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794680916.404 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 1] Train Head Time: 0.1116 seconds (cumulative: 0.1116s)
+[RUNTIME] Time for  Train Classification Head (Round 1): 0.1116 seconds
+[92mINFO [0m:      Sent reply
+[ROUND_METRICS] {"round": 1, "train_loss": 1.304596, "train_acc": 0.586, "test_loss": 1.454717, "test_acc": 0.556, "round_train_sec": 0.1116, "cum_train_sec": 0.1116}
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message 72b8f5e0-6644-4c1e-980c-10589b084548
+[92mINFO [0m:      Sent reply
+Starting local training: 2000 samples, 10 epochs (100 iterations, batch_size=200, lr=0.01)
+[PHASE MARKER] START_TRAIN_HEAD at timestamp 1794680916.479 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[92mINFO [0m:      
+[92mINFO [0m:      Received: train message aa83f35b-b193-44c2-a868-a24acfa8f149
+
+[RESOURCE] Usage for Usage for Train Classification Head
+  Time: 0.11 sec
+  Peak RAM Usage (psutil): 0.06 MB
+  Absolute Peak RAM Usage (psutil): 101.67 MB
+[PHASE MARKER] END_TRAIN_HEAD at timestamp 1794680916.590 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[ROUND 2] Train Head Time: 0.1108 seconds (cumulative: 0.2224s)
+[RUNTIME] Time for  Train Classification Head (Round 2): 0.1108 seconds
+[92mINFO [0m:      Sent reply
+[ROUND_METRICS] {"round": 2, "train_loss": 1.103186, "train_acc": 0.658, "test_loss": 1.278767, "test_acc": 0.608, "round_train_sec": 0.1108, "cum_train_sec": 0.2224}
+[92mINFO [0m:      
+[92mINFO [0m:      Received: evaluate message f666b7ba-5de3-47cc-8749-390e22441738
+[92mINFO [0m:      Sent reply
+[92mINFO [0m:      
+[92mINFO [0m:      Received: reconnect message 22eef5f2-25fa-498d-9d64-ff9172d629df
+[PHASE MARKER] END_FEDERATED_LEARNING at timestamp 1794680916.649 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+
+[RUNTIME] Time for  Train Classification Head: 0.2224 seconds (2 rounds total, avg 0.1112s/round)
+[ACCURACY] Final Round 2: Train Acc = 0.6580, Test Acc = 0.6080, Test Loss = 1.2788
+[92mINFO [0m:      Disconnect and shut down
+[PHASE MARKER] END_FL_CLIENT at timestamp 1794680916.649 (saved to /home/ayeminkhant/research_project/flower_project/fnirsi-usb-power-data-logger/phases.txt)
+[RUNTIME] Total Runtime (Full Client Run): 14.97 seconds

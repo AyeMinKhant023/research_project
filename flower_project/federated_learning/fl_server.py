@@ -1,5 +1,6 @@
 import flwr as fl
 import numpy as np
+import random
 from typing import Dict, List, Tuple, Optional
 from flwr.common import Metrics
 from flwr.server.strategy import FedAvg
@@ -8,12 +9,13 @@ from flwr.server.history import History
 
 
 class FederatedServer:
-    def __init__(self, feature_dim: int, num_classes: int, min_clients: int = 2, num_head_layers: int = 0, hidden_dim: int = 512):
+    def __init__(self, feature_dim: int, num_classes: int, min_clients: int = 2, num_head_layers: int = 0, hidden_dim: int = 512, seed: int = 42):
         self.feature_dim = feature_dim
         self.num_classes = num_classes
         self.min_clients = min_clients
         self.num_head_layers = num_head_layers
         self.hidden_dim = hidden_dim
+        self.seed = seed
 
         # Initialize global head parameters
         self.global_weights = self._initialize_parameters()
@@ -23,15 +25,20 @@ class FederatedServer:
         print(f"- Number of classes: {num_classes}")
         print(f"- Minimum clients: {min_clients}")
         print(f"- Head layers: {num_head_layers} (width={hidden_dim})")
+        print(f"- Seed: {seed}")
 
     def _initialize_parameters(self):
         """Initialize global head parameters."""
+        if self.seed is not None and self.seed >= 0:
+            random.seed(self.seed)
+            np.random.seed(self.seed)
         from softmax_regression import create_classification_head
         head = create_classification_head(
             self.feature_dim,
             self.num_classes,
             num_head_layers=self.num_head_layers,
             hidden_dim=self.hidden_dim,
+            seed=self.seed,
         )
         return head.get_weights()
 
@@ -101,6 +108,8 @@ def main():
                        help="Automatically keep server running across multiple benchmark rounds")
     parser.add_argument("--server_address", default="0.0.0.0:8080",
                        help="Server address (default: 0.0.0.0:8080)")
+    parser.add_argument("--seed", type=int, default=42,
+                       help="Random seed for deterministic initialization (-1 for non-deterministic)")
     
     args = parser.parse_args()
     
@@ -111,6 +120,7 @@ def main():
         args.min_clients,
         num_head_layers=args.num_head_layers,
         hidden_dim=args.hidden_dim,
+        seed=args.seed,
     )
     
     # Get strategy
@@ -124,6 +134,9 @@ def main():
     round_count = 0
     while True:
         round_count += 1
+        if args.seed is not None and args.seed >= 0:
+            random.seed(args.seed)
+            np.random.seed(args.seed)
         print(f"[FL SERVER] >>> Listening on {args.server_address} (Waiting for client run #{round_count})...")
         try:
             strategy = fed_server.get_strategy()
