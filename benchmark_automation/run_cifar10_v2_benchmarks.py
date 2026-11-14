@@ -863,9 +863,10 @@ def generate_all_reports_for_backbone(backbone_key, all_records_by_prefix_layer,
     with open(os.path.join(model_dir, "summary_stats.json"), "w") as f:
         json.dump(scaling_summary, f, indent=2)
 
-    plot_head_scaling_graphs(b_info, scaling_summary, "runtime", "s", args.device, model_dir, args.hidden_dim)
-    if args.mode == "both":
-        plot_head_scaling_graphs(b_info, scaling_summary, "energy", "mJ", args.device, model_dir, args.hidden_dim)
+    if len(LAYERS_TO_TEST) > 1:
+        plot_head_scaling_graphs(b_info, scaling_summary, "runtime", "s", args.device, model_dir, args.hidden_dim)
+        if args.mode == "both":
+            plot_head_scaling_graphs(b_info, scaling_summary, "energy", "mJ", args.device, model_dir, args.hidden_dim)
 
     # 3. Accuracy Tracking (Layer 12)
     acc_by_prefix = {

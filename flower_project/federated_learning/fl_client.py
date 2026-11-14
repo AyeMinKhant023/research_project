@@ -1,9 +1,16 @@
 import os
+import sys
+import importlib.util
 # Limit OpenBLAS spin-wait threads for small mini-batch GEMMs on Pi 5:
 # 1 thread avoids multi-core spin-wait overhead on (200x512) matrices and cuts training current from ~2.8A to ~1.3A
 # (TFLite CPU feature extraction still uses --num_threads=4 independently).
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
+
+# Prevent flwr.server.utils.tensorboard from importing full TensorFlow (~500MB RAM / >90s on Pi 3B)
+# when tflite_runtime is available for inference.
+if importlib.util.find_spec("tflite_runtime") is not None:
+    sys.modules.setdefault("tensorflow", None)
 
 import flwr as fl
 import numpy as np
