@@ -153,14 +153,18 @@ def parse_timings_from_log(log_text: str):
 
 
 def parse_round_metrics_from_log(log_text: str):
-    """Parses structured per-round [ROUND_METRICS] JSON lines emitted during Layer-12 accuracy tracking."""
+    """Parses structured per-round [ROUND_METRICS] JSON lines even when Flower ANSI logs appear on the same line."""
     records = []
-    for line in log_text.splitlines():
+    decoder = json.JSONDecoder()
+    clean_text = re.sub(r"\x1b\[[0-9;]*m", "", log_text)
+    for line in clean_text.splitlines():
         if "[ROUND_METRICS]" in line:
             idx = line.find("{")
             if idx != -1:
                 try:
-                    records.append(json.loads(line[idx:]))
+                    obj, _ = decoder.raw_decode(line[idx:])
+                    if isinstance(obj, dict) and "round" in obj:
+                        records.append(obj)
                 except json.JSONDecodeError:
                     continue
     return records
@@ -811,7 +815,8 @@ def export_accuracy_results(backbone_info, acc_runs_by_prefix, acc_layer, device
     ax2.grid(True, linestyle="--", alpha=0.6)
     ax2.legend(loc="upper right", frameon=True, fontsize=8.5)
 
-    fig.suptitle(f"Layer-{acc_layer} (512 Neurons/Layer) Convergence on CIFAR-10 ({device_name.upper()})", fontsize=12, fontweight="bold", y=1.01)
+    layer_desc = "Linear Softmax" if acc_layer == 0 else f"{HIDDEN_DIM} Neurons/Layer"
+    fig.suptitle(f"Layer-{acc_layer} ({layer_desc}) Convergence on CIFAR-10 ({device_name.upper()})", fontsize=12, fontweight="bold", y=1.01)
     plt.tight_layout()
     stem = f"graph_accuracy_L{acc_layer}_{device_name}"
     fig.savefig(os.path.join(model_dir, f"{stem}.png"), dpi=300, bbox_inches="tight")
