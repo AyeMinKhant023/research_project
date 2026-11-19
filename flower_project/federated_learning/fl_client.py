@@ -20,8 +20,6 @@ import json
 import time
 import psutil
 from PIL import Image
-from pycoral.adapters import classify
-from pycoral.adapters import common
 from softmax_regression import SoftmaxRegression, create_classification_head
 import contextlib
 from typing import Dict, List, Tuple, Optional
@@ -76,8 +74,8 @@ def get_image_paths(data_dir):
     return image_paths, labels, dict(zip(range(class_idx), classes))
 
 
-def shuffle_and_split(image_paths, labels, val_percent=0.1, test_percent=0.1, seed: Optional[int] = 42):
-    """Shuffles and splits data into train, validation, and test sets (deterministic when seed is set)."""
+def shuffle_and_split(image_paths, labels, val_percent=0.0, test_percent=0.2, seed: Optional[int] = 42):
+    """Shuffles and splits data into train, validation, and test sets (80-20 split by default; deterministic when seed is set)."""
     image_paths = np.array(image_paths)
     labels = np.array(labels)
     if seed is not None and seed >= 0:
@@ -134,6 +132,8 @@ def log_resource_usage(label, func, *args, **kwargs):
 def extract_embeddings(image_paths, interpreter, is_edgetpu=False):
     """Extract float32 embeddings on either EdgeTPU (pycoral) or CPU TFLite, auto-adapting to MobileNet & InceptionV3."""
     if is_edgetpu:
+        from pycoral.adapters import classify
+        from pycoral.adapters import common
         input_size = common.input_size(interpreter)
         feature_dim = int(classify.num_classes(interpreter))
         embeddings = np.empty((len(image_paths), feature_dim), dtype=np.float32)
@@ -194,6 +194,9 @@ class FederatedClient(fl.client.NumPyClient):
         track_accuracy: bool = False,
         accuracy_csv: Optional[str] = None,
         seed: int = 42,
+        val_percent: float = 0.0,
+        test_percent: float = 0.2,
+        embedding_cache: Optional[str] = None,
     ):
         self.embedding_extractor_path = os.path.expanduser(embedding_extractor_path)
         self.data_dir = data_dir
@@ -205,6 +208,9 @@ class FederatedClient(fl.client.NumPyClient):
         self.track_accuracy = track_accuracy
         self.accuracy_csv = accuracy_csv
         self.seed = seed if (seed is not None and seed >= 0) else None
+        self.val_percent = val_percent
+        self.test_percent = test_percent
+        self.embedding_cache = os.path.expanduser(embedding_cache) if embedding_cache else None
         self.is_edgetpu = "edgetpu" in os.path.basename(self.embedding_extractor_path).lower()
 
         if self.seed is not None:
@@ -224,8 +230,11 @@ class FederatedClient(fl.client.NumPyClient):
 
         # Log start of model loading
         log_phase_marker("START_LOAD_MODEL")
+        self.interpreter = None
 
-        if self.is_edgetpu:
+        if self.embedding_cache and os.path.exists(self.embedding_cache):
+            print(f"[CACHE] Embedding cache exists at {self.embedding_cache}; skipping TFLite/EdgeTPU interpreter load.")
+        elif self.is_edgetpu:
             from pycoral.utils.edgetpu import make_interpreter
             start = time.time()
 
@@ -299,37 +308,74 @@ class FederatedClient(fl.client.NumPyClient):
         """Load and preprocess local data."""
         print("Loading local data...")
         image_paths, labels, label_map = get_image_paths(self.data_dir)
-        train_and_val_dataset, test_dataset = shuffle_and_split(
-            image_paths, labels, val_percent=0.1, test_percent=0.1, seed=self.seed
-        )
 
-        # Log start of feature extraction (training images only)
-        log_phase_marker("START_EXTRACT_FEATURES")
+        if self.embedding_cache:
+            if os.path.exists(self.embedding_cache):
+                t_c = time.time()
+                cached = np.load(self.embedding_cache)
+                all_embeddings = cached["embeddings"].astype(np.float32)
+                all_labels = cached["labels"]
+                print(f"[CACHE] Loaded {len(all_embeddings)} cached embeddings from {self.embedding_cache} in {time.time() - t_c:.3f}s (shape={all_embeddings.shape})")
+            else:
+                log_phase_marker("START_EXTRACT_FEATURES")
+                print(f"[CACHE] Extracting all {len(image_paths)} embeddings once to populate {self.embedding_cache}...")
+                start = time.time()
+                all_embeddings = extract_embeddings(image_paths, self.interpreter, self.is_edgetpu)
+                all_labels = np.array(labels)
+                end = time.time()
+                print(f"[RUNTIME] Time for Extract Train Embeddings (Perform): {end - start:.2f} seconds")
+                log_phase_marker("END_EXTRACT_FEATURES")
+                os.makedirs(os.path.dirname(os.path.abspath(self.embedding_cache)), exist_ok=True)
+                tmp_cache = f"{self.embedding_cache}.{os.getpid()}.tmp.npz"
+                np.savez(tmp_cache, embeddings=all_embeddings, labels=all_labels)
+                os.replace(tmp_cache, self.embedding_cache)
+                print(f"[CACHE] Saved {len(all_embeddings)} embeddings to {self.embedding_cache}")
 
-        print("Extracting training embeddings...")
-        start = time.time()
-        self.train_embeddings = log_resource_usage(
-            "Usage for Extract Train Embeddings (Perform)",
-            extract_embeddings,
-            train_and_val_dataset['data_train'],
-            self.interpreter,
-            self.is_edgetpu,
-        )
-        end = time.time()
-        print(f"[RUNTIME] Time for Extract Train Embeddings (Perform): {end - start:.2f} seconds")
-        self.train_labels = train_and_val_dataset['labels_train']
-
-        log_phase_marker("END_EXTRACT_FEATURES")
-
-        # Extract held-out test embeddings AFTER END_EXTRACT_FEATURES so extraction timing/energy stays pure
-        if self.track_accuracy and len(test_dataset['data_test']) > 0:
-            print(f"Extracting {len(test_dataset['data_test'])} held-out test embeddings for per-round accuracy tracking...")
-            t_start = time.time()
-            self.test_embeddings = extract_embeddings(
-                test_dataset['data_test'], self.interpreter, self.is_edgetpu
+            train_and_val_dataset, test_dataset = shuffle_and_split(
+                all_embeddings,
+                all_labels,
+                val_percent=self.val_percent,
+                test_percent=self.test_percent,
+                seed=self.seed,
             )
-            self.test_labels = test_dataset['labels_test']
-            print(f"[ACCURACY] Test embeddings ready in {time.time() - t_start:.2f}s (shape={self.test_embeddings.shape})")
+            self.train_embeddings = train_and_val_dataset["data_train"]
+            self.train_labels = train_and_val_dataset["labels_train"]
+            if self.track_accuracy and len(test_dataset["data_test"]) > 0:
+                self.test_embeddings = test_dataset["data_test"]
+                self.test_labels = test_dataset["labels_test"]
+                print(f"[ACCURACY] Test embeddings ready from cache (shape={self.test_embeddings.shape})")
+        else:
+            train_and_val_dataset, test_dataset = shuffle_and_split(
+                image_paths, labels, val_percent=self.val_percent, test_percent=self.test_percent, seed=self.seed
+            )
+
+            # Log start of feature extraction (training images only)
+            log_phase_marker("START_EXTRACT_FEATURES")
+
+            print("Extracting training embeddings...")
+            start = time.time()
+            self.train_embeddings = log_resource_usage(
+                "Usage for Extract Train Embeddings (Perform)",
+                extract_embeddings,
+                train_and_val_dataset['data_train'],
+                self.interpreter,
+                self.is_edgetpu,
+            )
+            end = time.time()
+            print(f"[RUNTIME] Time for Extract Train Embeddings (Perform): {end - start:.2f} seconds")
+            self.train_labels = train_and_val_dataset['labels_train']
+
+            log_phase_marker("END_EXTRACT_FEATURES")
+
+            # Extract held-out test embeddings AFTER END_EXTRACT_FEATURES so extraction timing/energy stays pure
+            if self.track_accuracy and len(test_dataset['data_test']) > 0:
+                print(f"Extracting {len(test_dataset['data_test'])} held-out test embeddings for per-round accuracy tracking...")
+                t_start = time.time()
+                self.test_embeddings = extract_embeddings(
+                    test_dataset['data_test'], self.interpreter, self.is_edgetpu
+                )
+                self.test_labels = test_dataset['labels_test']
+                print(f"[ACCURACY] Test embeddings ready in {time.time() - t_start:.2f}s (shape={self.test_embeddings.shape})")
 
         self.dataset = {
             'data_train': self.train_embeddings,
@@ -467,6 +513,12 @@ def main():
                         help="Optional path to save per-round test accuracy CSV on client")
     parser.add_argument("--seed", type=int, default=42,
                         help="Random seed for deterministic train/val/test split (-1 for non-deterministic)")
+    parser.add_argument("--val_percent", type=float, default=0.0,
+                        help="Validation split fraction (default: 0.0 for 80-20 train/test split)")
+    parser.add_argument("--test_percent", type=float, default=0.2,
+                        help="Test split fraction (default: 0.2 for 80-20 train/test split)")
+    parser.add_argument("--embedding_cache", default=None,
+                        help="Optional path to .npz file to cache all extracted image embeddings across seeds")
     parser.add_argument("--benchmark_head_only", action="store_true",
                         help="Directly execute local head training without requiring Flower server connection")
 
@@ -485,6 +537,9 @@ def main():
         track_accuracy=args.track_accuracy,
         accuracy_csv=args.accuracy_csv,
         seed=args.seed,
+        val_percent=args.val_percent,
+        test_percent=args.test_percent,
+        embedding_cache=args.embedding_cache,
     )
 
     if args.benchmark_head_only:
